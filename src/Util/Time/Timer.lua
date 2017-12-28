@@ -1,4 +1,8 @@
-local apr = require "apr"
+local luaSocket = require "socket"
+
+local function getTimeNowInMs ()
+	return luaSocket:gettime() * 1000
+end
 
 --- Profile timer to measure time in milliseconds between
 -- Timer object created and call of endTimeNow().
@@ -18,16 +22,14 @@ local function Timer ()
     -- @return The time amount in milliseconds.
     --
 	local function endTimeNow ()
-		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
-		local endTime = (apr.time_now() - startTime)
-		return endTime * 1000
+		local endTime = (getTimeNowInMs() - startTime)
+		return endTime
 	end
 
     --- Start the timer by recording instantiation time.
     --
 	local function construct ()
-		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
-		startTime = apr.time_now()
+		startTime = getTimeNowInMs()
 
 		return
 		{

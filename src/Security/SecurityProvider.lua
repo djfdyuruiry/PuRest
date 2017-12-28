@@ -1,3 +1,4 @@
+local date = require "date"
 local md5 = require "md5"
 
 local AuthenticationTypes = require "PuRest.Security.AuthenticationTypes"
@@ -81,8 +82,7 @@ local function SecurityProvider (realm, authenticationType)
 	---
 	-- @return A random MD5 nonce for use with digest authentication.
 	local function generateNonce()
-		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
-		local timestamp = apr.time_format('rfc822', apr.time_now())
+		local timestamp = date():fmt("${http}")
 		local loops = math.random(50, 100)
 		local pk = ""
 
