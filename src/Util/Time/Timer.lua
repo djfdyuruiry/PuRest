@@ -18,6 +18,7 @@ local function Timer ()
     -- @return The time amount in milliseconds.
     --
 	local function endTimeNow ()
+		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
 		local endTime = (apr.time_now() - startTime)
 		return endTime * 1000
 	end
@@ -25,6 +26,7 @@ local function Timer ()
     --- Start the timer by recording instantiation time.
     --
 	local function construct ()
+		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
 		startTime = apr.time_now()
 
 		return

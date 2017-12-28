@@ -34,13 +34,16 @@ local function checkLogFileSize (logPath)
 
     nextLogCheck = os.time() + ServerConfig.logging.clearDownIntervalInSecs
 
+	-- TODO: replace with luafilesystem
     local fileStat, err = apr.stat(logPath)
 
     if not fileStat or err then
         return false, err
     end
 
-    if (fileStat.size / 1024) > ServerConfig.logging.maxLogFileSize then
+	if (fileStat.size / 1024) > ServerConfig.logging.maxLogFileSize then
+		
+		-- TODO: replace with os.remove
         return apr.file_remove(logPath)
     end
 end

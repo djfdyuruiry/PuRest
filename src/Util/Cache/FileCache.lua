@@ -16,6 +16,7 @@ local fileCache =  {}
 --          explaining why the entry is invalid.
 --
 local function isFileStillValid(cacheFile, filePath)
+	-- TODO: replace with luafilesystem
 	local fileStats = apr.stat(filePath)
 
 	if not fileStats then
@@ -84,6 +85,7 @@ local function updateFileCache (filePath, fileContent, fileFormat)
 		}, "FileCache.updateFileCache")
 
 	local timer = Timer()
+	-- TODO: replace with luafilesystem
 	local fileStats = apr.stat(filePath)
 
 	if not ServerConfig.enableFileCache then

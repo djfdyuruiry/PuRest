@@ -13,6 +13,7 @@ local apr = require "apr"
 --                                   (Not a restriction just a flag)
 --
 local function Semaphore (threadQueue, initalValue, isBinarySemaphore)
+	-- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
 	local threadQueue = threadQueue or apr.thread_queue()
 	local binarySemaphore = isBinarySemaphore or false
 	local holdingLock = false

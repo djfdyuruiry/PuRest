@@ -319,6 +319,8 @@ local function ClientRequestHandler (routeMap, siteConfig, urlNamespace)
 
 			if h[2] then
 				log("Preforming host validation by DNS lookup.", LogLevelMap.INFO)
+				
+				-- TODO: replace with luasocket
 				return apr.addr_to_host(ipAddress) == apr.addr_to_host(h[1])
 			else
 				log("Preforming host validation by string comparison.", LogLevelMap.INFO)

@@ -20,6 +20,7 @@ local function getSessionId (sessionIdentifier, siteName)
 
 	local sessionId = string.format("%s|%s", siteName, sessionIdentifier)
 
+	-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
 	return apr.md5(sessionId), sessionId
 end
 

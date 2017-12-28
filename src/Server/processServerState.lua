@@ -115,6 +115,8 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 
 			if keepConnectionAlive then
 				-- Prevent high CPU usage when waiting for another request.
+
+				-- TODO: replace with luasocket
 				apr.sleep(0.01)
 			end
 		until not keepConnectionAlive or os.time() >= timeout

@@ -138,6 +138,7 @@ local function HttpDataPipe (params)
 		if params.host and params.port then
 			local conBacklog = ServerConfig.connectionBacklog > 0 and ServerConfig.connectionBacklog or "max"
 
+			-- TODO: replace with luasocket
 			socket = apr.socket_create()
 
 			local bindStatus, bindErr = socket:bind(params.host, params.port)
@@ -196,6 +197,8 @@ local function HttpDataPipe (params)
 		end
 
 		dataPipe.socket = socket
+		
+			-- TODO: replace with luasocket
 		dataPipe.getHostName = functionProxy(apr.hostname_get)
 		dataPipe.terminate = methodProxy(socket, "close")
 

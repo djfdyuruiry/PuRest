@@ -8,6 +8,7 @@ local apr = require "apr"
 -- @param socket optional An existing APR socket to use.
 --
 local function AprToLuaSocketWrapper (socket)
+	-- TODO: replace with luasocket
 	local socket = socket or apr.socket_create();
 
 	local function getAprSocket ()

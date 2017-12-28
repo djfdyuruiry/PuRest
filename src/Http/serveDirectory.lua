@@ -61,6 +61,8 @@ local function serveDirectory (_, _, httpState, siteConfig)
 	-- Build directory path and open directory.
 	local sitePath = (siteConfig.fullPath:gsub([[\]], "/")):gsub([[\]], "/")
 	local directory = (string.format("%s/%s", sitePath, httpState.request.location)):gsub("//", "/")
+	
+	-- TODO: replace with luafilesystem
 	local dirReader, dirError = apr.dir_open(directory)
 
 	local dirExists = dirReader and not dirError

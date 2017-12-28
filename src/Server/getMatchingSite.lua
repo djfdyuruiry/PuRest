@@ -30,6 +30,7 @@ local function getMatchingSite (location)
 
     local path = string.format("%s/%s", ServerConfig.htmlDirectory, siteLocation):gsub("//", "/")
 
+    -- TODO: replace with luafilesystem
     local dirReader, error = apr.stat(path)
 
     if not dirReader or error then

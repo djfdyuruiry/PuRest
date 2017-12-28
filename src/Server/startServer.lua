@@ -49,6 +49,7 @@ local function startServer (threadSlotQueue, sessionQueue, useHttps)
     local thread, threadErr
 
     try ( function ()
+        -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
         thread, threadErr = apr.thread(startServerThread, threadSlotQueue, sessionQueue, useHttps)
 
         if not thread or threadErr then

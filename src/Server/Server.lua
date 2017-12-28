@@ -34,7 +34,9 @@ local function Server (enableHttps)
 	local serverDataPipe
 
 	--- Mutlithreading objects.
-	local threads = ServerConfig.workerThreads > 1 and {} or nil
+    local threads = ServerConfig.workerThreads > 1 and {} or nil
+    
+    -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
 	local threadQueue = ServerConfig.workerThreads > 1 and apr.thread_queue(ServerConfig.workerThreads) or nil
 	local sessionThreadQueue = SessionData.getThreadQueue()
 
@@ -117,6 +119,7 @@ local function Server (enableHttps)
 
                         table.insert(threads,
                             {
+                                -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
                                 thread = apr.thread(processServerState, threadId, threadQueue, sessionThreadQueue, nil, useHttps),
                                 id = threadId
                             })
@@ -157,6 +160,7 @@ local function Server (enableHttps)
     --- Create object, handlers for interrupt and terminate handlers are
     -- attached here to enable cleanup of server socket before process end.
     local function construct ()
+        -- TODO: replace with lua_signal (https://luarocks.org/modules/luarocks/lua_signal)
         apr.signal("SIGINT", termServer)
         apr.signal("SIGTERM", interruptServer)
 

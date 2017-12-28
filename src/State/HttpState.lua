@@ -170,6 +170,8 @@ local function HttpState (method, ipAddress, host, port, location, protocol,
         local protocol = request.protocol or protocolAlt
         local status = response.status or statusAlt
         local textCode = TextCodeDictionary[status]
+
+		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
         local date, dateErr = apr.time_format('rfc822', apr.time_now())
         local responseFormat = response.responseFormat or respFormatAlt
         local responseContent = response.content or contentAlt
@@ -190,6 +192,8 @@ local function HttpState (method, ipAddress, host, port, location, protocol,
                 "Content-Type: text/html; charset=utf-8"
                 "Server: Apache/2.4.1 (Unix)"
         --]]
+        -- TODO: replace platform_get call with luarocks logic or consider defining this upfront using powershell or similar
+        -- see https://github.com/luarocks/luarocks/blob/master/src/luarocks/core/cfg.lua
 		local headers = string.format("%sConnection: %s\r\nContent-Type: %s; charset=UTF-8\r\nServer: PuRest/%s (%s)\r\n",
                 headers, (request.headers["Connection"] or "close"), responseFormat,
                 Server.PUREST_VERSION, (apr.platform_get() or "?"))

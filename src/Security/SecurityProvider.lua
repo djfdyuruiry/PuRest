@@ -68,9 +68,11 @@ local function SecurityProvider (realm, authenticationType)
 		local a1 = string.format("%s:%s:%s", authorizationData.userName, realm, authorizationData.password)
 		local a2 = string.format("%s:%s", authorizationData.requestMethod, authorizationData.requestPath)
 
+		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
 		local digest = string.format("%s:%s:%s:%s:%s:%s", apr.md5(a1), authorizationData.nonce, authorizationData.nc,
 			authorizationData.cnonce, "auth", apr.md5(a2))
 
+		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
 		digest = apr.md5(digest)
 
 		logProxyFunction(string.format("Digest Security info - a1: '%s', a2: '%s', digest: '%s'", a1, a2, digest), LogLevelMap.DEBUG)
@@ -81,6 +83,7 @@ local function SecurityProvider (realm, authenticationType)
 	---
 	-- @return A random MD5 nonce for use with digest authentication.
 	local function generateNonce()
+		-- TODO: replace with date (https://luarocks.org/modules/tieske/date)
 		local timestamp = apr.time_format('rfc822', apr.time_now())
 		local loops = math.random(50, 100)
 		local pk = ""
@@ -89,6 +92,7 @@ local function SecurityProvider (realm, authenticationType)
 			pk = pk .. string.char(math.random(127))
 		end
 
+		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
 		return apr.md5(string.format("%s:%s", timestamp, pk))
 	end
 

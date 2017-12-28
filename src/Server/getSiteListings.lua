@@ -18,6 +18,8 @@ local function getSiteListings ()
 	--- Build sites in HTML directory.
 	local sites = {}
 	local numSitesAdded = 0
+	
+	-- TODO: replace with luafilesystem
 	local dirReader, error = apr.dir_open(ServerConfig.htmlDirectory)
 
 	if not dirReader or error then

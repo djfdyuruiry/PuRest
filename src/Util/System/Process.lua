@@ -96,6 +96,7 @@ local function Process (path, humanReadableName, args, readTimeout)
     -- @return A string containing all the output from process standard out.
     --
 	local function run ()
+		-- TODO: replace with io.popen
 		local proc, createErr = apr.proc_create(path)
 
 		if not proc then

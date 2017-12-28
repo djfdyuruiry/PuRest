@@ -26,6 +26,8 @@ local function extractAuthenticationData (requestHeaders, method, logProxyFuncti
 			logProxyFunction("Detected basic HTTP authentication.", LogLevelMap.INFO)
 
 			local base64Data = requestHeaders["Authorization"]:match("Basic (.+)")
+			
+			-- TODO: replace with luasocket
 			local data = apr.base64_decode(base64Data)
 			local userName, password = data:match("(.+):(.+)")
 
