@@ -1,4 +1,6 @@
 #!/bin/sh
+# TODO: redo this in powershell
+
 SRC=/home/user/src/lua
 WEB_APPS=/home/user/src/lua/purest-web-apps
 

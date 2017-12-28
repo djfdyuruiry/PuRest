@@ -1,48 +1,46 @@
-project.defaultTasks = ['cleanRelease', 'makeReleaseDir', 'copyReleaseTemplate',
-                        'copyServerCode', 'unzipBin', 'unzipLib', 'removeTmpFiles',
-                        'copyFavIcon', 'copyServerConfig']
+defaultTasks "cleanRelease", "makeReleaseDir", "copyReleaseTemplate", "copyServerCode", /*"unzipBin", "unzipLib", "removeTmpFiles",*/ "copyFavIcon", "copyServerConfig", "cleanBuildPlaceholders"
 
 // Prepare directories
 task cleanRelease(type: Delete) {
-    def releaseFolder = new File('build/release')
+    def releaseFolder = new File("build/release")
 
     if (releaseFolder.exists()) {
-        delete 'build/release'
+        delete "build/release"
     }
 }
 
 task makeReleaseDir {
-    def releaseDir = new File('build/release')
+    def releaseDir = new File("build/release")
     releaseDir.mkdirs()
 }
 
 task copyReleaseTemplate(type: Copy) {
-    from 'build/template'
-    into 'build/release'
-    include '**/**'
+    from "build/template"
+    into "build/release"
+    include "**/**"
 }
 
 // Copy project code
 task copyServerCode(type: Copy) {
-    from '/'
-    into 'build/release/lua/PuRest'
-    include 'Config/**'
-    include 'Html/**'
-    include 'Http/**'
-    include 'Logging/**'
-    include 'Php/**'
-    include 'Routing/**'
-    include 'Security/**'
-    include 'Server/**'
-    include 'State/**'
-    include 'Util/**'
-    include 'View/**'
+    from "src/"
+    into "build/release/lua/PuRest"
+    include "Config/**"
+    include "Html/**"
+    include "Http/**"
+    include "Logging/**"
+    include "Php/**"
+    include "Routing/**"
+    include "Security/**"
+    include "Server/**"
+    include "State/**"
+    include "Util/**"
+    include "View/**"
     include "*.lua"
 }
-
+/*
 // Unpack binaries/libraries
 task unzipBin(type: Copy) {
-    def zipFile = file('build/release/bin/bin.zip')
+    def zipFile = file("build/release/bin/bin.zip")
     def outputDir = file("build/release/bin")
 
     from zipTree(zipFile)
@@ -50,28 +48,36 @@ task unzipBin(type: Copy) {
 }
 
 task unzipLib(type: Copy) {
-    def zipFile = file('build/release/lua/libs.zip')
+    def zipFile = file("build/release/lua/libs.zip")
     def outputDir = file("build/release/lua")
 
     from zipTree(zipFile)
     into outputDir
 }
 
-task copyFavIcon(type: Copy) {
-    from '/'
-    into 'build/release/web'
-    include 'favicon.*'
+// Clean up build mess
+task removeTmpFiles(type: Delete) {
+    delete "build/release/bin/bin.zip", "build/release/lua/lib.zip"
 }
+*/
+
+task copyFavIcon(type: Copy) {
+    from "resources/"
+    into "build/release/web"
+    include "favicon.ico"
+}
+
+// TODO: add landing page for default server install and copy here
 
 // Copy server config
 task copyServerConfig(type: Copy) {
-    from '/Config'
-    into 'build/release/cfg'
-    include 'DefaultConfig.lua'
-    rename 'DefaultConfig.lua', 'cfg.lua'
+    from "src/Config"
+    into "build/release/cfg"
+    include "DefaultConfig.lua"
+    rename "DefaultConfig.lua", "cfg.lua"
 }
 
-// Clean up build mess
-task removeTmpFiles(type: Delete) {
-    delete 'build/release/bin/bin.zip', 'build/release/lua/lib.zip'
+// Delete build placeholder files
+task cleanBuildPlaceholders(type: Delete) {
+    delete fileTree(dir: "build/release/", include: "**/build.txt")
 }
