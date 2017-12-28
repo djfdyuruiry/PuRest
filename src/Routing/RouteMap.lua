@@ -1,4 +1,5 @@
-require "lualinq"
+local luaLinq = require "lualinq"
+local from = luaLinq.from
 
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"

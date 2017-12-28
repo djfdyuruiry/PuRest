@@ -1,4 +1,4 @@
-local apr = require "apr"
+local luaFileSystem = require "lfs"
 
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
@@ -16,12 +16,11 @@ local fileCache =  {}
 --          explaining why the entry is invalid.
 --
 local function isFileStillValid(cacheFile, filePath)
-	-- TODO: replace with luafilesystem
-	local fileStats = apr.stat(filePath)
+	local fileStats = luaFileSystem.attributes(filePath)
 
 	if not fileStats then
 		return false, "deleted"
-	elseif fileStats.mtime > cacheFile.lastModified then
+	elseif fileStats.modification > cacheFile.lastModified then
 		return false, "modified"
 	end
 
@@ -85,8 +84,7 @@ local function updateFileCache (filePath, fileContent, fileFormat)
 		}, "FileCache.updateFileCache")
 
 	local timer = Timer()
-	-- TODO: replace with luafilesystem
-	local fileStats = apr.stat(filePath)
+	local fileStats = luaFileSystem.attributes(filePath)
 
 	if not ServerConfig.enableFileCache then
 		return false, "file cache disabled in server config"
@@ -102,7 +100,7 @@ local function updateFileCache (filePath, fileContent, fileFormat)
 	{
 		content = fileContent,
 		format = fileFormat,
-		lastModified = fileStats.mtime
+		lastModified = fileStats.modification
 	}
 
 	log(string.format("Added '%s' to file cache.", filePath), LogLevelMap.INFO)

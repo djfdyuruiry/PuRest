@@ -7,7 +7,7 @@
 require "logging"
 require "logging.rolling_file"
 
-local apr = require "apr"
+local luaFileSystem = require "lfs"
 
 local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 local LogFiles = require "PuRest.Logging.LogFiles"
@@ -34,8 +34,7 @@ local function checkLogFileSize (logPath)
 
     nextLogCheck = os.time() + ServerConfig.logging.clearDownIntervalInSecs
 
-	-- TODO: replace with luafilesystem
-    local fileStat, err = apr.stat(logPath)
+    local fileStat, err = luaFileSystem.attributes(logPath)
 
     if not fileStat or err then
         return false, err

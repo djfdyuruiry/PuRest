@@ -1,5 +1,6 @@
-local apr = require "apr"
+local luaFileSystem = require "lfs"
 
+local getNextDirectoryEntry = require "PuRest.Util.File.getNextDirectoryEntry"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local ServerConfig = require "PuRest.Config.resolveConfig"
@@ -18,9 +19,11 @@ local function getSiteListings ()
 	--- Build sites in HTML directory.
 	local sites = {}
 	local numSitesAdded = 0
-	
-	-- TODO: replace with luafilesystem
-	local dirReader, error = apr.dir_open(ServerConfig.htmlDirectory)
+
+	local dirReader, dirMetatable
+	local _, error = pcall(function()
+		dirReader, dirMetatable = luaFileSystem.dir(ServerConfig.htmlDirectory)
+	end)
 
 	if not dirReader or error then
 		error(string.format("Unable to open HTML directory '%s': %s.",
@@ -30,7 +33,9 @@ local function getSiteListings ()
 	log(string.format("Building internal list of sites found in config HTML directory '%s'.",
 			ServerConfig.htmlDirectory), LogLevelMap.INFO)
 
-	for entry in dirReader:entries() do
+	local entry = getNextDirectoryEntry(ServerConfig.htmlDirectory, dirReader, dirMetatable)
+
+	while entry do
 		if entry.type == "directory" and not StringUtils.startsWith(entry.name, ".") then
             local dirName = ServerConfig.siteNamesCaseSensitive and entry.name or entry.name:lower()
             local site
@@ -51,6 +56,8 @@ local function getSiteListings ()
             table.insert(sites, site)
 			numSitesAdded = numSitesAdded + 1
 		end
+
+		entry = getNextDirectoryEntry(ServerConfig.htmlDirectory, dirReader, dirMetatable)
 	end
 
 	log(string.format("Loaded %d sites from HTML directory.", numSitesAdded), LogLevelMap.INFO)

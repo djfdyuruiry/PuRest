@@ -1,4 +1,5 @@
-require "lualinq"
+local luaLinq = require "lualinq"
+local from = luaLinq.from
 
 local luaSocket = require "socket"
 local dns = luaSocket.dns

@@ -1,4 +1,5 @@
-require "lualinq"
+local luaLinq = require "lualinq"
+local from = luaLinq.from
 
 local FileCache = require "PuRest.Util.Cache.FileCache"
 local FileSystemUtils = require "PuRest.Util.File.FileSystemUtils"

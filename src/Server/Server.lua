@@ -1,4 +1,5 @@
-require "lualinq"
+local luaLinq = require "lualinq"
+local from = luaLinq.from
 
 local apr = require "apr"
 

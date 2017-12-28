@@ -1,7 +1,9 @@
-require "lualinq"
+local luaLinq = require "lualinq"
+local from = luaLinq.from
 
-local apr = require "apr"
+local luaFileSystem = require "lfs"
 
+local getNextDirectoryEntry = require "PuRest.Util.File.getNextDirectoryEntry"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local StringUtils = require "PuRest.Util.Data.StringUtils"
@@ -61,12 +63,13 @@ local function serveDirectory (_, _, httpState, siteConfig)
 	-- Build directory path and open directory.
 	local sitePath = (siteConfig.fullPath:gsub([[\]], "/")):gsub([[\]], "/")
 	local directory = (string.format("%s/%s", sitePath, httpState.request.location)):gsub("//", "/")
-	
-	-- TODO: replace with luafilesystem
-	local dirReader, dirError = apr.dir_open(directory)
+
+    local dirReader, dirMetatable
+	local _, dirError = pcall(function()
+        dirReader, dirMetatable = luaFileSystem.dir(directory)
+    end)
 
 	local dirExists = dirReader and not dirError
-
 
 	-- Check if directory listing is disabled or error occured when opening directory.
 	if not siteConfig.directoryServingEnabled or dirError then
@@ -88,7 +91,9 @@ local function serveDirectory (_, _, httpState, siteConfig)
 	local filesHtml = ""
 
 	-- Get all files/sub-directories in directory, except those matching do not serve file types.
-	for entry in dirReader:entries() do
+	local entry = getNextDirectoryEntry(directory, dirReader, dirMetatable)
+
+    while entry do
 		if isOkToServe(entry, siteConfig.doNotServeTheseFiles) then
 			numListings = numListings + 1
 			if entry.type == "directory" then
@@ -98,7 +103,9 @@ local function serveDirectory (_, _, httpState, siteConfig)
 				local link = string.format("./%s", entry.name)
 				filesHtml = filesHtml .. string.format(ENTRY_HTML, entry.type, link, entry.name)
 			end
-		end
+        end
+
+        entry = getNextDirectoryEntry(directory, dirReader, dirMetatable)
 	end
 
 	-- Inject Base64 icon links.

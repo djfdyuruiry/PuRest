@@ -1,4 +1,4 @@
-local apr = require "apr"
+local luaFileSystem = require "lfs"
 
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local Site = require "PuRest.Server.Site"
@@ -30,20 +30,19 @@ local function getMatchingSite (location)
 
     local path = string.format("%s/%s", ServerConfig.htmlDirectory, siteLocation):gsub("//", "/")
 
-    -- TODO: replace with luafilesystem
-    local dirReader, error = apr.stat(path)
+    local pathInfo, error = luaFileSystem.attributes(path)
 
-    if not dirReader or error then
+    if not pathInfo or error then
         return
     end
 
     local site
 
-    if dirReader.type == "directory" then
-        local dirName = ServerConfig.siteNamesCaseSensitive and dirReader.name or dirReader.name:lower()
+    if pathInfo.mode == "directory" then
+        local dirName = ServerConfig.siteNamesCaseSensitive and siteLocation or siteLocation:lower()
 
         if siteLocation == dirName then
-            site = Site("http", dirReader.name, dirReader.path)
+            site = Site("http", siteLocation, path)
         end
     end
 
