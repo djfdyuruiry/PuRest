@@ -1,4 +1,5 @@
-require "alien"
+-- TODO: have build mechanism to exclude alien from dependecies completely on non-windows system
+--require "alien"
 
 local apr = require "apr"
 
@@ -188,6 +189,7 @@ local function getStats ()
 
 	try(function ()
 		if PLATFORM == "WIN32" then
+			error("windows stats not implemented yet")
 			stats = getWin32Stats()
 		elseif PLATFORM == "UNIX" then
             stats = getUnixStats()
@@ -209,8 +211,9 @@ local function getPid ()
 	local pid
 
 	try(function ()
-		if PLATFORM == "WIN32" then
-			pid =  getPidWin32()
+		if PLATFORM == "WIN32" then 
+			error("windows pid not implemented yet")
+			pid = getPidWin32()
 		elseif PLATFORM == "UNIX" then
             pid = getPidUnix()
 		end
