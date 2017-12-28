@@ -1,7 +1,5 @@
 local ssl = require "ssl"
 
-local AprToLuaSocketWrapper = require "PuRest.Security.LuaSecInterop.AprToLuaSocketWrapper"
-local LuaSecToAprSocketWrapper = require "PuRest.Security.LuaSecInterop.LuaSecToAprSocketWrapper"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -29,17 +27,16 @@ end
 -- up the encrypted socket or preforming the connection handshake, an
 -- error is thrown.
 --
--- @param aprSocket APR client socket object to be encrypted for HTTPS communication.
--- @return A LuaSecToAprSocketWrapper object which can be used in place of an APR client socket.
+-- @param socket Client socket object to be encrypted for HTTPS communication.
+-- @return A luasec socket object which can be used in place of a client socket.
 --
-local function initHttps (aprSocket)
+local function initHttps (socket)
 	validateParameters(
 		{
-			aprSocket = {aprSocket, Types._userdata_}
+			socket = {socket, Types._userdata_}
 		}, "initHttps")
 
-	local peerAddress, peerPort = aprSocket:addr_get("remote")
-	local luaSecSocket, sslWrapError = ssl.wrap(AprToLuaSocketWrapper(aprSocket), HTTPS_PARAMS)
+	local luaSecSocket, sslWrapError = ssl.wrap(socket, HTTPS_PARAMS)
 
 	if not luaSecSocket or sslWrapError then
 		error(string.format("Error wrapping socket for HTTPS encryption: %s", sslWrapError or "unknown error."))
@@ -51,7 +48,7 @@ local function initHttps (aprSocket)
 		error(string.format("Error preforming HTTPS handshake: %s", handshakeError or "unknown error."))
 	end
 
-	return LuaSecToAprSocketWrapper(luaSecSocket, aprSocket, peerAddress, peerPort)
+	return luaSecSocket
 end
 
 return initHttps

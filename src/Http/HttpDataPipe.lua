@@ -4,7 +4,8 @@ local ServerConfig = require "PuRest.Config.resolveConfig"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local apr = require 'apr'
+local luaSocket = require "socket"
+local dns = luaSocket.dns
 
 local CONSTRUCTOR_PARAM_ERR = "HttpDataPipe: You must pass a table containing either {host=..,port=..} if you want " ..
 	"a server data pipe or {socket=..} when building a client HTTP channel."
@@ -117,17 +118,11 @@ local function HttpDataPipe (params)
 				},
 				"HttpDataPipe.construct")
 		elseif params.socket then
-			-- Check if socket passed in is an LuaSecToAprSocketWrapper object.
-			if type(params.socket) == Types._table_ and
-			   type(params.socket.__IS_LUASEC_SOCKET_WRAPPER__) == Types._boolean_ then
-				baseSocketIsLuaSecWrapper = true
-			else
-				validateParameters(
-					{
-						params_socket = {params.socket, Types._userdata_}
-					},
-					"HttpDataPipe.construct")
-			end
+			validateParameters(
+				{
+					params_socket = {params.socket, Types._userdata_}
+				},
+				"HttpDataPipe.construct")
 		else
 			error(CONSTRUCTOR_PARAM_ERR)
 		end
@@ -137,13 +132,11 @@ local function HttpDataPipe (params)
 
 		if params.host and params.port then
 			local conBacklog = ServerConfig.connectionBacklog > 0 and ServerConfig.connectionBacklog or "max"
+			local bindErr
 
-			-- TODO: replace with luasocket
-			socket = apr.socket_create()
+			socket, bindErr = luaSocket.bind(params.host, params.port)
 
-			local bindStatus, bindErr = socket:bind(params.host, params.port)
-
-            if not bindStatus or bindErr then
+            if not socket or bindErr then
                 error(string.format("Unable to bind server socket to %s:%d: %s.", params.host, params.port,
                     (bindErr or "unknown error")))
             end
@@ -151,7 +144,7 @@ local function HttpDataPipe (params)
 			socket:listen(conBacklog)
 
 			if ServerConfig.socketReceiveBufferSize > 0 then
-				socket:opt_set("rcvbuf", ServerConfig.socketReceiveBufferSize )
+				socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
 			end
 
 			dataPipe =
@@ -165,13 +158,13 @@ local function HttpDataPipe (params)
 			socket = params.socket
 
 			if ServerConfig.socketSendBufferSize > 0 then
-				socket:opt_set("sndbuf", ServerConfig.socketSendBufferSize)
+				socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
 			end
 
 			dataPipe =
 			{
 				getClientPeerName = function (format)
-				    local host, port = socket:addr_get("remote")				
+				    local host, port = socket:getpeername()				
 					if format then
                         return tostring(host) .. ":" .. tostring(port) 
                     else
@@ -180,30 +173,28 @@ local function HttpDataPipe (params)
 				end,
 				getMethodLocationProtocol = getMethodLocationProtocol,
 				getHeaders = getHeaders,
-				read = methodProxy(socket, "read"),
+				read = methodProxy(socket, "receive"),
 				readLine = function ()
-					local response, err, errCode = socket:read("*l")
+					local response, err = socket:receive("*l")
 
 					if err then
-						error(string.format("Socket Error: '%s' (Error Code: '%s')", tostring(err), tostring(errCode)))
+						error(string.format("Socket Error: '%s'", tostring(err)))
 					end
 
 					return response
 				end,
-				readChars = methodProxy(socket, "read"),
-				write = methodProxy(socket, "write"),
+				readChars = methodProxy(socket, "receive"),
+				write = methodProxy(socket, "send"),
 				isBaseSocketLuaSocketWrapper = isBaseSocketLuaSocketWrapper
 			}
 		end
 
 		dataPipe.socket = socket
-		
-			-- TODO: replace with luasocket
-		dataPipe.getHostName = functionProxy(apr.hostname_get)
+		dataPipe.getHostName = functionProxy(dns.gethostname)
 		dataPipe.terminate = methodProxy(socket, "close")
 
 		--socket:timeout_set(conTimeout)
-		socket:opt_set('debug', true)
+		socket:setoption('debug', true)
 
 		return dataPipe
 	end

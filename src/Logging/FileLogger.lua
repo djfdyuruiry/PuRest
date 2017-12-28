@@ -42,9 +42,7 @@ local function checkLogFileSize (logPath)
     end
 
 	if (fileStat.size / 1024) > ServerConfig.logging.maxLogFileSize then
-		
-		-- TODO: replace with os.remove
-        return apr.file_remove(logPath)
+        return os.remove(logPath)
     end
 end
 

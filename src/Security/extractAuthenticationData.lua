@@ -1,4 +1,4 @@
-local apr = require "apr"
+local mime = require("mime")
 
 local AuthenticationTypes = require "PuRest.Security.AuthenticationTypes"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
@@ -26,9 +26,7 @@ local function extractAuthenticationData (requestHeaders, method, logProxyFuncti
 			logProxyFunction("Detected basic HTTP authentication.", LogLevelMap.INFO)
 
 			local base64Data = requestHeaders["Authorization"]:match("Basic (.+)")
-			
-			-- TODO: replace with luasocket
-			local data = apr.base64_decode(base64Data)
+			local data = mime.unb64(base64Data)
 			local userName, password = data:match("(.+):(.+)")
 
 			return

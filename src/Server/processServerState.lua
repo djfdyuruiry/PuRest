@@ -34,7 +34,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 		error("processServerState requires a value for either the threadQueue or socket parameter.")
 	end
 
-	local apr = require "apr"
+	local luaSocket = require "socket"
 
 	-- Set global thread id.
 	local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
@@ -115,9 +115,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 
 			if keepConnectionAlive then
 				-- Prevent high CPU usage when waiting for another request.
-
-				-- TODO: replace with luasocket
-				apr.sleep(0.01)
+				luaSocket.sleep(0.01)
 			end
 		until not keepConnectionAlive or os.time() >= timeout
 
