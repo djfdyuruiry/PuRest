@@ -1,4 +1,4 @@
-local apr = require "apr"
+local md5 = require "md5"
 
 local AuthenticationTypes = require "PuRest.Security.AuthenticationTypes"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
@@ -68,12 +68,10 @@ local function SecurityProvider (realm, authenticationType)
 		local a1 = string.format("%s:%s:%s", authorizationData.userName, realm, authorizationData.password)
 		local a2 = string.format("%s:%s", authorizationData.requestMethod, authorizationData.requestPath)
 
-		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
-		local digest = string.format("%s:%s:%s:%s:%s:%s", apr.md5(a1), authorizationData.nonce, authorizationData.nc,
-			authorizationData.cnonce, "auth", apr.md5(a2))
+		local digest = string.format("%s:%s:%s:%s:%s:%s", md5.sum(a1), authorizationData.nonce, authorizationData.nc,
+			authorizationData.cnonce, "auth", md5.sum(a2))
 
-		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
-		digest = apr.md5(digest)
+		digest = md5.sum(digest)
 
 		logProxyFunction(string.format("Digest Security info - a1: '%s', a2: '%s', digest: '%s'", a1, a2, digest), LogLevelMap.DEBUG)
 
@@ -92,8 +90,7 @@ local function SecurityProvider (realm, authenticationType)
 			pk = pk .. string.char(math.random(127))
 		end
 
-		-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
-		return apr.md5(string.format("%s:%s", timestamp, pk))
+		return md5.sum(string.format("%s:%s", timestamp, pk))
 	end
 
 	--- Handle if a user has been marked as unauthorized by sending WWW-Authenticate header

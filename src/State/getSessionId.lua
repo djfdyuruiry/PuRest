@@ -1,4 +1,4 @@
-local apr = require "apr"
+local md5 = require "md5"
 
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -20,8 +20,7 @@ local function getSessionId (sessionIdentifier, siteName)
 
 	local sessionId = string.format("%s|%s", siteName, sessionIdentifier)
 
-	-- TODO: replace with md5 (https://luarocks.org/modules/tomasguisasola/md5)
-	return apr.md5(sessionId), sessionId
+	return md5.sum(sessionId), sessionId
 end
 
 return getSessionId
