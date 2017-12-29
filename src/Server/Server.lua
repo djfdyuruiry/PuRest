@@ -1,7 +1,7 @@
-local luaLinq = require "lualinq"
-local from = luaLinq.from
+local signal = pcall(require, "posix.signal") -- TODO: provide win platform support for signals
+local lanes = (require "lanes").configure()
 
-local apr = require "apr"
+local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
 
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
@@ -37,9 +37,9 @@ local function Server (enableHttps)
 	--- Mutlithreading objects.
     local threads = ServerConfig.workerThreads > 1 and {} or nil
     
-    -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
-	local threadQueue = ServerConfig.workerThreads > 1 and apr.thread_queue(ServerConfig.workerThreads) or nil
+    local threadQueue = ServerConfig.workerThreads > 1 and lanes.linda() or nil
 	local sessionThreadQueue = SessionData.getThreadQueue()
+    local processServerStateThreadGenerator = lanes.gen(processServerState)
 
     --- Clean any dead threads and donate the id's of dead threads
     -- back to the pool
@@ -49,9 +49,10 @@ local function Server (enableHttps)
 	local function cleanDeadThreads(threadSlots)
 		for idx, thread in ipairs(threads) do
 			if thread then
-				local threadStatus = threads[idx].thread and threads[idx].thread:status() or ""
+				local threadStatus = threads[idx].thread and threads[idx].thread.status or ""
 				if (threadStatus == "done" or threadStatus == "error") then
-					log(string.format("Thread %d has finished with status '%s', killing thread.", threads[idx].id, threadStatus), LogLevelMap.DEBUG)
+					log(string.format("Thread %d has finished with status '%s', killing thread.",
+                        threads[idx].id, threadStatus), LogLevelMap.DEBUG)
 
 					table.remove(threads, idx)
 					ThreadSlots.markSlotsAsFree(threadSlots, thread.id)
@@ -83,7 +84,7 @@ local function Server (enableHttps)
 
     --- Handle the server being interrupted.
     local function interruptServer ()
-        --stopServer("server process received a interrupt signal")
+        stopServer("server process received a interrupt signal")
     end
 
 	--- Start listening for clients and accepting requests; this method blocks.
@@ -118,21 +119,24 @@ local function Server (enableHttps)
 
                         ThreadSlotSemaphore.setThreadSlots()
 
+                        local thread = processServerStateThreadGenerator(threadId, threadQueue,
+                            sessionThreadQueue, nil, useHttps)
+
                         table.insert(threads,
                             {
-                                -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
-                                thread = apr.thread(processServerState, threadId, threadQueue, sessionThreadQueue, nil, useHttps),
+                                thread = thread,
                                 id = threadId
                             })
 
-                        threadQueue:push(clientDataPipe.socket)
+                        threadQueue:send(DEFAULT_LINDA_KEY, clientDataPipe.socket)
                     else
                         processServerState(1, nil, sessionThreadQueue, clientDataPipe.socket, useHttps)
                     end
                 end
             end)
             .catch (function (ex)
-                log(string.format("Error occurred when connecting to client (address/port for client unavailable): %s.", ex), LogLevelMap.ERROR)
+                log(string.format("Error occurred when connecting to client (address/port for client unavailable): %s.", ex),
+                    LogLevelMap.ERROR)
 
                 if clientSocket then
                     clientSocket:close()
@@ -161,9 +165,14 @@ local function Server (enableHttps)
     --- Create object, handlers for interrupt and terminate handlers are
     -- attached here to enable cleanup of server socket before process end.
     local function construct ()
-        -- TODO: replace with lua_signal (https://luarocks.org/modules/luarocks/lua_signal)
-        apr.signal("SIGINT", termServer)
-        apr.signal("SIGTERM", interruptServer)
+        if signal then
+            signal.signal(signal.SIGINT, termServer)
+            signal.signal(signal.SIGTERM, interruptServer)
+        end
+
+        if ServerConfig.workerThreads > 1 then
+            threadQueue.limit(DEFAULT_LINDA_KEY, ServerConfig.workerThreads)
+        end
 
         return
         {

@@ -10,7 +10,7 @@ local ServerPidFile = require "PuRest.Util.System.ServerPidFile"
 ServerPidFile.recordServerPid()
 
 if not ServerConfig.https.enabled then
-	Server().startServer()
+	Server().startServer():join()
 else
     local SessionData = require "PuRest.State.SessionData"
     local startServer = require "PuRest.Server.startServer"
@@ -21,8 +21,11 @@ else
 	local threadSlotQueue = ThreadSlotSemaphore.getThreadQueue()
 
     -- Start HTTPS server.
-    startServer(threadSlotQueue, sessionQueue, true)
+    local httpServer = startServer(threadSlotQueue, sessionQueue, true)
 
     -- Start HTTP server.
-    startServer(threadSlotQueue, sessionQueue, false)
+    local httpsServer = startServer(threadSlotQueue, sessionQueue, false)
+
+    httpServer:join()
+    httpsServer:join()
 end

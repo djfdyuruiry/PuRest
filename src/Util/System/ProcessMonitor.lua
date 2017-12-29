@@ -1,14 +1,12 @@
 -- TODO: have build mechanism to exclude alien from dependecies completely on non-windows system
 --require "alien"
 
-local apr = require "apr"
-
 local StringUtils = require "PuRest.Util.Data.StringUtils"
 local try = require "PuRest.Util.ErrorHandling.try"
 
 -- TODO: replace platform_get call with luarocks logic or consider defining this upfront using powershell or similar
 -- see https://github.com/luarocks/luarocks/blob/master/src/luarocks/core/cfg.lua
-local PLATFORM = apr.platform_get()
+local PLATFORM = "Unix"--apr.platform_get()
 
 --[[ WIN32 OS calls. ]]
 

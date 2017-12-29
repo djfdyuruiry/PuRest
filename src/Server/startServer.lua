@@ -1,4 +1,4 @@
-local apr = require "apr"
+local lanes = require "lanes"
 
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
@@ -49,8 +49,7 @@ local function startServer (threadSlotQueue, sessionQueue, useHttps)
     local thread, threadErr
 
     try ( function ()
-        -- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
-        thread, threadErr = apr.thread(startServerThread, threadSlotQueue, sessionQueue, useHttps)
+        thread, threadErr = lanes.gen(startServerThread)(threadSlotQueue, sessionQueue, useHttps)
 
         if not thread or threadErr then
             error(threadErr)

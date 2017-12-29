@@ -1,4 +1,8 @@
-local apr = require "apr"
+local lanes = require "lanes"
+
+local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
+
+local DEFAULT_TIMEOUT = 30 -- TODO: consider a better value for this
 
 --- Provides a lightweight Semaphore built on a thread queue.
 -- Call the object with no parameters to get value lock then pass
@@ -13,8 +17,7 @@ local apr = require "apr"
 --                                   (Not a restriction just a flag)
 --
 local function Semaphore (threadQueue, initalValue, isBinarySemaphore)
-	-- TODO: repalce with lanes (https://luarocks.org/modules/luarocks/lanes)
-	local threadQueue = threadQueue or apr.thread_queue()
+	local threadQueue = threadQueue or lanes.linda()
 	local binarySemaphore = isBinarySemaphore or false
 	local holdingLock = false
 	local lastPoppedValue
@@ -70,18 +73,18 @@ local function Semaphore (threadQueue, initalValue, isBinarySemaphore)
             --
 			__call = function (_, value)
 				if value or lastPoppedValue then
-					threadQueue:push(value or lastPoppedValue)
+					threadQueue:send(DEFAULT_LINDA_KEY, value or lastPoppedValue)
 					lastPoppedValue = nil
 
 					if binarySemaphore then
 						holdingLock = false
 					end
 				else
-					local val, err, errCode = threadQueue:pop()
+					local val, err, errCode = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
 
 					-- If pop method was interrupted it will need to be called again.
 					while val == nil do
-						val = threadQueue:pop()
+						val = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
 					end
 
 					lastPoppedValue = val
