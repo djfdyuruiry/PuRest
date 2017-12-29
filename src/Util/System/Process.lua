@@ -1,8 +1,6 @@
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local READ_TIMEOUT_MS = 100
-
 --- Build up arguments for a process and execute it with pipes for
 -- standard out/error.
 --
@@ -13,15 +11,24 @@ local READ_TIMEOUT_MS = 100
 --                      (You may need to escape double quotes for some arguments).
 -- @param readTimeout Timeout for reading the standard out/error.
 --
-local function Process (path, humanReadableName, args, readTimeout)
+local function Process (path, humanReadableName, args)
 	validateParameters(
 		{
 			path = {path, Types._string_},
 			humanReadableName = {humanReadableName, Types._string_}
 		}, "Process.construct")
-
-	local readTimeout = readTimeout or READ_TIMEOUT_MS
+		
 	local humanReadableName = humanReadableName or path
+	local argsString = ""
+
+	if args then
+		validateParameters(
+			{
+				args = {args, Types._table_}
+			}, "Process.construct")
+		
+		argsString = table.concat(args, " ")
+	end
 
     --- Read all data from a pipe stream.
     --
@@ -83,7 +90,7 @@ local function Process (path, humanReadableName, args, readTimeout)
     --
 	local function run ()
 		local standardErrorFilename = os.tmpname()
-		local proc, createErr = io.popen(string.format("%s 2> %s", path, standardErrorFilename))
+		local proc, createErr = io.popen(string.format("%s %s 2> %s", path, argsString, standardErrorFilename))
 
 		if not proc then
 			error(string.format("Failed to open process for '%s' -> %s.", humanReadableName, createErr or "unknown error"))
