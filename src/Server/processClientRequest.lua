@@ -1,7 +1,9 @@
 local luaLinq = require "lualinq"
 local from = luaLinq.from
 
+local convertClientSocketFileDescriptorToHttpDataPipe = require "PuRest.Util.Networking.convertClientSocketFileDescriptorToHttpDataPipe"
 local getMatchingSite = require "PuRest.Server.getMatchingSite"
+local getSocketFileDescriptorFromThreadQueue = "PuRest.Server.getSocketFileDescriptorFromThreadQueue"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
@@ -21,19 +23,23 @@ local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters
 --
 local function resolveDataPipe(socket, threadQueue)
 	if socket then
-		if type(socket) == Types._table_ then
-			-- Existing data pipe
+		if type(socket) == Types._number_ then
+			-- Raw socket file descriptor
+			return convertClientSocketFileDescriptorToHttpDataPipe(socket)
+		elseif type(socket) == Types._table_ then
+			-- Existing HttpDataPipe instance
 			return socket
 		elseif type(socket) == Types._userdata_ then
-			-- New socket
+			-- LuaSocket Socket instance
 			return HttpDataPipe({socket = socket})
 		end
 	elseif threadQueue then
-		-- No socket passed in, fetch from thread queue.
-		log("Waiting for client socket to be passed.", LogLevelMap.INFO)
-		return HttpDataPipe({socket = threadQueue:pop()})
+		-- No socket passed in, fetch file descriptor from thread queue
+		local socketFileDescriptor = getSocketFileDescriptorFromThreadQueue(threadQueue)
+		
+		return convertClientSocketFileDescriptorToHttpDataPipe(socketFileDescriptor)
 	else
-		error("Error resolving data pipe to use for request: a valid network source(DataPipe/socket/ThreadQueue) was not passed in.")
+		error("Error resolving data pipe to use for request: a valid network source(Socket File Descriptor/HttpDataPipe/LuaSocket Socket/ThreadQueue) was not passed in.")
 	end
 end
 

@@ -23,7 +23,7 @@ local function Semaphore (threadQueue, initalValue, isBinarySemaphore)
 	local lastPoppedValue
 
 	if initalValue then
-		threadQueue:push(initalValue)
+		threadQueue:send(DEFAULT_LINDA_KEY, initalValue)
 	end
 
     --- Get the thread queue being used by this semaphore.
@@ -80,11 +80,11 @@ local function Semaphore (threadQueue, initalValue, isBinarySemaphore)
 						holdingLock = false
 					end
 				else
-					local val, err, errCode = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
-
+					local _, val, err = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
+					
 					-- If pop method was interrupted it will need to be called again.
-					while val == nil do
-						val = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
+					while val == nil or err do
+						_, val, err = threadQueue:receive(DEFAULT_TIMEOUT, DEFAULT_LINDA_KEY)
 					end
 
 					lastPoppedValue = val

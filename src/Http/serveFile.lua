@@ -91,7 +91,7 @@ local function serveFile (urlArgs, queryStringArgs, httpState, siteConfig)
 
 	if mimeType == MimeTypeDictionary["lhtml"] then
 		httpState.response.responseFormat = "text/html"
-		httpState.response.content = processView(fileName:gsub("\.lhtml", ""), nil,
+		httpState.response.content = processView(fileName:gsub("%.lhtml", ""), nil,
 												 siteConfig, urlArgs, queryStringArgs, httpState)
 	elseif mimeType == MimeTypeDictionary["php"] then
 		httpState.response.responseFormat = "text/html"

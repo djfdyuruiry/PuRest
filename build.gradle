@@ -1,4 +1,4 @@
-defaultTasks "cleanRelease", "makeReleaseDir", "copyReleaseTemplate", "copyServerCode", /*"unzipBin", "unzipLib", "removeTmpFiles",*/ "copyFavIcon", "copyServerConfig", "cleanBuildPlaceholders"
+defaultTasks "cleanRelease", "makeReleaseDir", "copyReleaseTemplate", "copyServerCode", /*"unzipBin", "unzipLib", "removeTmpFiles",*/ "copyFavIcon", "copyJsonLib", "copyServerConfig", "cleanBuildPlaceholders"
 
 // Prepare directories
 task cleanRelease(type: Delete) {
@@ -24,19 +24,15 @@ task copyReleaseTemplate(type: Copy) {
 task copyServerCode(type: Copy) {
     from "src/"
     into "build/release/lua/PuRest"
-    include "Config/**"
-    include "Html/**"
-    include "Http/**"
-    include "Logging/**"
-    include "Php/**"
-    include "Routing/**"
-    include "Security/**"
-    include "Server/**"
-    include "State/**"
-    include "Util/**"
-    include "View/**"
-    include "*.lua"
+    include "**/*"
 }
+
+task copyJsonLib(type: Copy) {
+    from "lib/lua"
+    into "build/release/lua"
+    include "**/*"
+}
+
 /*
 // Unpack binaries/libraries
 task unzipBin(type: Copy) {

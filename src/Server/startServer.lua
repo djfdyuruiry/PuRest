@@ -1,5 +1,6 @@
 local lanes = require "lanes"
 
+local assertThreadStarted = require "PuRest.Util.Threading.assertThreadStarted"
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -28,8 +29,14 @@ local function startServerThread (threadCountQueue, sessionsQueue, useHttps)
     SessionData.setThreadQueue(sessionsQueue)
     ThreadSlotSemaphore.setThreadQueue(threadCountQueue)
 
-    Server(useHttps).startServer()
+    local server = Server(useHttps)
+
+    set_finalizer(server.stopServer)
+
+    server.startServer()
 end
+
+local startServerThreadGenerator = lanes.gen("*", {cancelstep = true}, startServerThread)
 
 --- Start a server in a new thread, errors are thrown if there was an
 -- error starting the thread; this function does not block.
@@ -46,14 +53,13 @@ local function startServer (threadSlotQueue, sessionQueue, useHttps)
             sessionQueue = {sessionQueue, Types._userdata_}
         }, "startServer")
 
-    local thread, threadErr
+    local thread
 
     try ( function ()
-        thread, threadErr = lanes.gen(startServerThread)(threadSlotQueue, sessionQueue, useHttps)
+        local threadErr
+        thread, threadErr = startServerThreadGenerator(threadSlotQueue, sessionQueue, useHttps)
 
-        if not thread or threadErr then
-            error(threadErr)
-        end
+        assertThreadStarted(thread, threadErr, "Error starting server thread: %s")
     end)
     .catch( function(ex)
         error(string.format("Error starting HTTPS server: %s.", ex))

@@ -25,12 +25,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 			{
 				threadQueue = {threadQueue, Types._userdata_}
 			}, "processServerState")
-	elseif socket then
-		validateParameters(
-			{
-				socket = {socket, Types._userdata_}
-			}, "processServerState")
-	else
+	elseif not socket then
 		error("processServerState requires a value for either the threadQueue or socket parameter.")
 	end
 
@@ -43,7 +38,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 	-- Get global server config.
 	local ServerConfig = require "PuRest.Config.resolveConfig"
 
-	local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
+	local getSocketFileDescriptorFromThreadQueue = "PuRest.Server.getSocketFileDescriptorFromThreadQueue"
 	local log = require "PuRest.Logging.FileLogger"
 	local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 	local processClientRequest = require "PuRest.Server.processClientRequest"
@@ -67,13 +62,16 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 			log("Server client sockets required by configuration to use HTTPS encryption.")			
 			log("Attempting to encrypt socket for HTTPS communication.")
 			   
-            try(function() 
+			try(function() 
+				if not socket then
+					-- No socket passed in, fetch file descriptor from thread queue
+					socket = getSocketFileDescriptorFromThreadQueue(threadQueue)
+				end
+
 			    local initHttps = require "PuRest.Security.LuaSecInterop.initHttps"
-                local httpsSocket = initHttps(socket or threadQueue:pop())
+                clientDataPipe = initHttps(socket)
                 
 			    log("Successfully encrypted client socket for use as HTTPS data pipe.")
-			    
-                clientDataPipe = HttpDataPipe({socket = httpsSocket})
 			end)
 			.catch(function(ex)
                 error(string.format("Error encrypting client socket for HTTPS communication: %s", ex))

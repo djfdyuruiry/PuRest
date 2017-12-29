@@ -42,8 +42,8 @@ local function parseQueryString (queryString)
 	-- key value pairs.
 	for _, kvpStr in ipairs(explodedQueryString) do
 		local kvp = StringUtils.explode(kvpStr, "=")
-		local key = unescape((kvp[1]:gsub("\+", " ")))
-		local value = unescape((kvp[2] and kvp[2]:gsub("\+", " ") or ""))
+		local key = unescape((kvp[1]:gsub("%+", " ")))
+		local value = unescape((kvp[2] and kvp[2]:gsub("%+", " ") or ""))
 
 		queryStringDict[key] = value
 	end

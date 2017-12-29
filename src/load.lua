@@ -1,31 +1,101 @@
--- Bootstrap for PuRest server runtime.
-assert((os.getenv("PUREST_WEB") or os.getenv("PUREST")), "Please set the PUREST_WEB or PUREST environment variables!")
+local registerSignalHandler = require "PuRest.Util.System.registerSignalHandler"
+local try = require "PuRest.Util.ErrorHandling.try"
 
--- Ensure server config is loaded before any server code runs.
-local ServerConfig = require "PuRest.Config.resolveConfig"
+local function outputServerErrors (serverErrors)
+    io.stderr:write("Server terminated with errors:")
 
-local Server = require "PuRest.Server.Server"
-local ServerPidFile = require "PuRest.Util.System.ServerPidFile"
+    for _, error in ipairs(serverErrors) do
+        io.stderr:write(error)
+        io.stderr:write()
+    end
+end
 
-ServerPidFile.recordServerPid()
-
-if not ServerConfig.https.enabled then
-	Server().startServer():join()
-else
+local function startServerWithHttps (serverErrors)
     local SessionData = require "PuRest.State.SessionData"
     local startServer = require "PuRest.Server.startServer"
     local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 
     -- Prepare data sharing semaphores.
-	local sessionQueue = SessionData.getThreadQueue()
-	local threadSlotQueue = ThreadSlotSemaphore.getThreadQueue()
+    local sessionQueue = SessionData.getThreadQueue()
+    local threadSlotQueue = ThreadSlotSemaphore.getThreadQueue()
 
     -- Start HTTPS server.
-    local httpServer = startServer(threadSlotQueue, sessionQueue, true)
+    local serverThreads = 
+    {
+        startServer(threadSlotQueue, sessionQueue, false), 
+        startServer(threadSlotQueue, sessionQueue, true)
+    }
 
-    -- Start HTTP server.
-    local httpsServer = startServer(threadSlotQueue, sessionQueue, false)
-
-    httpServer:join()
-    httpsServer:join()
+    local cancelThreads = function()
+        serverThreads[1]:cancel()
+        serverThreads[2]:cancel()
+    end
+    
+    registerSignalHandler("SIGINT", cancelThreads)
+    registerSignalHandler("SIGTERM", cancelThreads)
+    
+    for _, thread in ipairs(serverThreads) do
+        local _, threadError = thread:join()
+        
+        if threadError then
+         table.insert(serverErrors, threadError)
+        end
+    end
 end
+
+local function startServerWithoutHttps (serverErrors)
+    local Server = require "PuRest.Server.Server"
+
+    try(function()
+        local server = Server()
+            
+        local stopServer = function ()
+            server.stopServer()
+        end
+
+        registerSignalHandler("SIGINT", stopServer)
+        registerSignalHandler("SIGTERM", stopServer)
+        
+        server.startServer()
+    end).
+    catch(function (ex)
+        table.insert(serverErrors, ex)
+    end)
+end
+
+local function load()
+    local serverErrors = {}
+
+    try(function()
+        -- Assert a suitable environment variable is present
+        assert((os.getenv("PUREST_WEB") or os.getenv("PUREST")), 
+            "Please set the PUREST_WEB or PUREST environment variables!")
+
+        -- Init lanes
+        require "lanes".configure()
+
+        -- Ensure server config is loaded before any server code runs.
+        local ServerConfig = require "PuRest.Config.resolveConfig"
+        local ServerPidFile = require "PuRest.Util.System.ServerPidFile"
+
+        ServerPidFile.recordServerPid()
+
+        if not ServerConfig.https.enabled then
+            startServerWithoutHttps(serverErrors)
+        else
+            startServerWithHttps(serverErrors)
+        end
+    end).
+    catch(function(ex)
+        table.insert(serverErrors, ex)
+    end)
+
+    if #serverErrors > 0 then
+        outputServerErrors(serverErrors)
+        os.exit(1)
+    end
+
+    os.exit(0)
+end
+
+load()

@@ -61,9 +61,10 @@ function main {
     fi
   fi
 
-  # TODO: create luarock to install json.lua from http://regex.info/code/JSON.lua OR https://github.com/rxi/json.lua
-  luaDependencies=( luasocket lanes lua_signal luafilesystem md5 date lzlib lrexlib-pcre lualogging lualinq xml luasec )
+  # TODO: create luarock to install json.lua from http://regex.info/code/JSON.lua OR https://github.com/rxi/json.lua (gradle copies this from lib/lua currently)
+  luaDependencies=( luasocket lanes luaposix luafilesystem md5 date lzlib lrexlib-pcre lualogging lualinq xml luasec )
 
+  # TODO: don't install luaposix if on windows
   # TODO: ensure alien rock installed if running on windows
 
   for luaDependency in "${luaDependencies[@]}"; do

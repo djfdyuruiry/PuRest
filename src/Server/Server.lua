@@ -1,12 +1,15 @@
-local signal = pcall(require, "posix.signal") -- TODO: provide win platform support for signals
-local lanes = (require "lanes").configure()
+local JSON = require "JSON"
+local lanes = require "lanes"
+local luaSocket = require "socket"
 
 local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
 
+local assertThreadStarted = require "PuRest.Util.Threading.assertThreadStarted"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local processServerState = require "PuRest.Server.processServerState"
+local registerSignalHandler = require "PuRest.Util.System.registerSignalHandler"
 local SessionData = require "PuRest.State.SessionData"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local ThreadSlots = require "PuRest.Util.Threading.ThreadSlots"
@@ -39,7 +42,7 @@ local function Server (enableHttps)
     
     local threadQueue = ServerConfig.workerThreads > 1 and lanes.linda() or nil
 	local sessionThreadQueue = SessionData.getThreadQueue()
-    local processServerStateThreadGenerator = lanes.gen(processServerState)
+    local processServerStateThreadGenerator = lanes.gen("*", processServerState)
 
     --- Clean any dead threads and donate the id's of dead threads
     -- back to the pool
@@ -61,11 +64,18 @@ local function Server (enableHttps)
 		end
     end
 
-    --- Shutdown the server.
-    --
-    -- @param reason String containing a human readable reason for server shutdown.
-    --
-    local function stopServer(reason)
+    --- Shutdown the server
+    local function stopServer(err, stackTrace)
+        local errorMessage
+
+        if err then
+            errorMessage = string.format("Terminating server due to error: %s | %s", 
+                tostring(err), 
+                JSON:encode(stackTrace))
+        end
+            
+        local reason = err and errorMessage or "Server is shutting down"
+
         serverRunning = false
 
         reasonForShutdown = tostring(reason or "unknown reason")
@@ -75,16 +85,6 @@ local function Server (enableHttps)
         if serverDataPipe then
             serverDataPipe.terminate()
         end
-    end
-
-    --- Handle the server being terminated.
-    local function termServer ()
-        stopServer("server process received a terminate signal")
-    end
-
-    --- Handle the server being interrupted.
-    local function interruptServer ()
-        stopServer("server process received a interrupt signal")
     end
 
 	--- Start listening for clients and accepting requests; this method blocks.
@@ -119,16 +119,16 @@ local function Server (enableHttps)
 
                         ThreadSlotSemaphore.setThreadSlots()
 
-                        local thread = processServerStateThreadGenerator(threadId, threadQueue,
-                            sessionThreadQueue, nil, useHttps)
+                        local thread, threadErr = processServerStateThreadGenerator(threadId, threadQueue,
+                            sessionThreadQueue, clientDataPipe.socket:getfd(), useHttps)
+                        
+                        assertThreadStarted(thread, threadErr, "Error starting processServerState thread: %s")
 
                         table.insert(threads,
                             {
                                 thread = thread,
                                 id = threadId
                             })
-
-                        threadQueue:send(DEFAULT_LINDA_KEY, clientDataPipe.socket)
                     else
                         processServerState(1, nil, sessionThreadQueue, clientDataPipe.socket, useHttps)
                     end
@@ -139,7 +139,9 @@ local function Server (enableHttps)
                     LogLevelMap.ERROR)
 
                 if clientSocket then
-                    clientSocket:close()
+                    pcall(function ()
+                        clientSocket:close()
+                    end)
                 end
             end)
 		end
@@ -165,13 +167,8 @@ local function Server (enableHttps)
     --- Create object, handlers for interrupt and terminate handlers are
     -- attached here to enable cleanup of server socket before process end.
     local function construct ()
-        if signal then
-            signal.signal(signal.SIGINT, termServer)
-            signal.signal(signal.SIGTERM, interruptServer)
-        end
-
         if ServerConfig.workerThreads > 1 then
-            threadQueue.limit(DEFAULT_LINDA_KEY, ServerConfig.workerThreads)
+            threadQueue:limit(DEFAULT_LINDA_KEY, ServerConfig.workerThreads)
         end
 
         return

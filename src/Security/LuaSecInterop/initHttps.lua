@@ -1,5 +1,7 @@
 local ssl = require "ssl"
 
+local convertClientSocketFileDescriptorToHttpDataPipe = require "PuRest.Util.Networking.convertClientSocketFileDescriptorToHttpDataPipe"
+local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -27,16 +29,17 @@ end
 -- up the encrypted socket or preforming the connection handshake, an
 -- error is thrown.
 --
--- @param socket Client socket object to be encrypted for HTTPS communication.
--- @return A luasec socket object which can be used in place of a client socket.
+-- @param socketFileDescriptor Client socket file descriptor to be encrypted for HTTPS communication.
+-- @return An encrypted HttpDataPipe which can be used in place of a client HttpDataPipe.
 --
-local function initHttps (socket)
+local function initHttps (socketFileDescriptor)
 	validateParameters(
 		{
-			socket = {socket, Types._userdata_}
+			socketFileDescriptor = {socketFileDescriptor, Types._number_}
 		}, "initHttps")
 
-	local luaSecSocket, sslWrapError = ssl.wrap(socket, HTTPS_PARAMS)
+	local dataPipe = convertClientSocketFileDescriptorToHttpDataPipe(socketFileDescriptor)
+	local luaSecSocket, sslWrapError = ssl.wrap(dataPipe, HTTPS_PARAMS)
 
 	if not luaSecSocket or sslWrapError then
 		error(string.format("Error wrapping socket for HTTPS encryption: %s", sslWrapError or "unknown error."))
@@ -48,7 +51,7 @@ local function initHttps (socket)
 		error(string.format("Error preforming HTTPS handshake: %s", handshakeError or "unknown error."))
 	end
 
-	return luaSecSocket
+	return HttpDataPipe({socket = luaSecSocket})
 end
 
 return initHttps

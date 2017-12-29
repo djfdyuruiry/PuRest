@@ -1,12 +1,13 @@
 -- TODO: have build mechanism to exclude alien from dependecies completely on non-windows system
 --require "alien"
 
+local Process = require "PuRest.Util.System.Process"
 local StringUtils = require "PuRest.Util.Data.StringUtils"
 local try = require "PuRest.Util.ErrorHandling.try"
 
 -- TODO: replace platform_get call with luarocks logic or consider defining this upfront using powershell or similar
 -- see https://github.com/luarocks/luarocks/blob/master/src/luarocks/core/cfg.lua
-local PLATFORM = "Unix"--apr.platform_get()
+local PLATFORM = "UNIX"--apr.platform_get()
 
 --[[ WIN32 OS calls. ]]
 
@@ -97,13 +98,12 @@ end
 -- @return Process id as a number.
 --
 local function getPidUnix ()
-    local getpid = alien.default.getpid
-	getpid:types{ret ="int"}
-
-	local pid = getpid()
+	local getPidProcess = Process("echo $PPID", "Get PuRest PID")
+	local pidStr = getPidProcess.run()
+	local pid = tonumber(pidStr)
 
 	if not pid then
-		error("Error while trying to request PID from OS: library call 'getpid()' returned nil.")
+		error("Error while trying to request PID from OS")
 	end
 
 	return pid

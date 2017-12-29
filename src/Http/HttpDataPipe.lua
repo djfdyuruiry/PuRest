@@ -131,20 +131,29 @@ local function HttpDataPipe (params)
 		--local conTimeout = ServerConfig.connectionTimeOutInMs > 0 and ServerConfig.connectionTimeOutInMs * 1000 or 10000
 
 		if params.host and params.port then
-			local conBacklog = ServerConfig.connectionBacklog > 0 and ServerConfig.connectionBacklog or "max"
-			local bindErr
+			local _, bindErr
 
-			socket, bindErr = luaSocket.bind(params.host, params.port)
+			socket = luaSocket.tcp()
+			_, bindErr = socket:bind(params.host, params.port)
 
             if not socket or bindErr then
                 error(string.format("Unable to bind server socket to %s:%d: %s.", params.host, params.port,
                     (bindErr or "unknown error")))
-            end
+			end
+			
+			local conBacklog = ServerConfig.connectionBacklog > 0 and ServerConfig.connectionBacklog or "max"
+			
+			local listenErr
+			_, listenErr = socket:listen(conBacklog)
 
-			socket:listen(conBacklog)
-
+            if listenErr then
+                error(string.format("Unable to listen on server socket to %s:%d: %s.", params.host, params.port,
+                    (listenErr or "unknown error")))
+			end
+			
 			if ServerConfig.socketReceiveBufferSize > 0 then
-				socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
+				-- TODO: either remove from cfg or find way to set in luasocket
+				--socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
 			end
 
 			dataPipe =
@@ -158,7 +167,8 @@ local function HttpDataPipe (params)
 			socket = params.socket
 
 			if ServerConfig.socketSendBufferSize > 0 then
-				socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
+				-- TODO: either remove from cfg or find way to set in luasocket
+				--socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
 			end
 
 			dataPipe =
@@ -194,7 +204,9 @@ local function HttpDataPipe (params)
 		dataPipe.terminate = methodProxy(socket, "close")
 
 		--socket:timeout_set(conTimeout)
-		socket:setoption('debug', true)
+
+		-- TODO: either remove from cfg or find way to set in luasocket
+		--socket:setoption('debug', true)
 
 		return dataPipe
 	end
