@@ -1,6 +1,3 @@
-local apr = require "apr"
-
-local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -32,31 +29,20 @@ local function Process (path, humanReadableName, args, readTimeout)
     -- @param streamType Type of stream "out" | "err".
     -- @return String containing all data read from the stream.
     --
-	local function readStream (stream, streamType)
-		local out = ""
-		local line, readErr = stream:read()
+	local function readAndCloseStream (stream, streamType, standardErrorFilename)
+		local out, readErr = stream:read('*all')
 
-		streamType = streamType:lower()
+		pcall(function()
+			stream:close()
+		end)
 
-		while line do
-			out = out .. line
-
-			try(function ()
-				line, readErr = stream:read(readTimeout)
-			end)
-			.catch( function (ex)
-				line = nil
-
-				if ex:match("attempt to use a closed file") then
-					-- Ignore closed streams.
-					readErr = nil
-				else
-					readErr = ex
-				end
+		if streamType == "err" then
+			pcall(function()
+				os.remove(standardErrorFilename)
 			end)
 		end
 
-		if not line and readErr then
+		if not out and readErr then
 			error(string.format("Error while reading from %s steam for '%s' -> %s.", streamType, humanReadableName,
 				readErr or "unknown error"))
 		end
@@ -70,15 +56,15 @@ local function Process (path, humanReadableName, args, readTimeout)
     -- @param streamType Type of stream "out" | "err".
     -- @return A new stream handle for the pipe specified.
     --
-	local function createStream(process, streamType)
+	local function createStream(process, streamType, standardErrorFilename)
 		local stream, streamCreateErr
 
 		streamType = streamType:lower()
 
 		if streamType == "out" then
-			stream, streamCreateErr = process:out_get()
+			stream = process
 		elseif streamType == "err" then
-			stream, streamCreateErr = process:err_get()
+			stream, streamCreateErr = io.open(standardErrorFilename, "r")
 		end
 
 		if not stream then
@@ -96,38 +82,20 @@ local function Process (path, humanReadableName, args, readTimeout)
     -- @return A string containing all the output from process standard out.
     --
 	local function run ()
-		-- TODO: replace with io.popen
-		local proc, createErr = apr.proc_create(path)
+		local standardErrorFilename = os.tmpname()
+		local proc, createErr = io.popen(string.format("%s 2> %s", path, standardErrorFilename))
 
 		if not proc then
 			error(string.format("Failed to open process for '%s' -> %s.", humanReadableName, createErr or "unknown error"))
 		end
 
-        local cmdStatus, cmdErr = proc:cmdtype_set("shellcmd/env")
-
-        if not cmdStatus or cmdErr then
-            error(string.format("Error setting command type for process %s: %s.", humanReadableName, cmdErr or "unknown error"))
-        end
-
-        local ioStatus, ioErr = proc:io_set("none", "parent-block", "parent-block")
-
-        if not ioStatus or ioErr then
-            error(string.format("Error setting I/O parameters for process %s: %s.", humanReadableName, ioErr or "unknown error"))
-        end
-
-        local execStatus, execErr = proc:exec(type(args) == Types._table_ and args or nil)
-
-        if not execStatus or execErr then
-            error(string.format("Error executing process %s: %s.", humanReadableName, execErr or "unknown error"))
-        end
-
-		local err = readStream(createStream(proc, "err"), "err")
+		local err = readAndCloseStream(createStream(proc, "err", standardErrorFilename), "err", standardErrorFilename)
 
 		if err and err ~= "" then
 			error(string.format("Process '%s' threw an error -> %s.", humanReadableName, err))
 		end
 
-		return readStream(createStream(proc, "out"), "out")
+		return readAndCloseStream(createStream(proc, "out"), "out")
 	end
 
 	return
