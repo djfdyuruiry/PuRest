@@ -1,8 +1,11 @@
+local loadstring = loadstring or load
+
 local Regex = require "rex_pcre"
 
 local ScriptletPatterns = require "PuRest.View.ScriptletPatterns"
 local ScriptletTypes = require "PuRest.View.ScriptletTypes"
 local Serialization = require "PuRest.Util.Data.Serialization"
+local setfenv = require "PuRest.Util.setfenv"
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"

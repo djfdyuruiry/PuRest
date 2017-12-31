@@ -1,5 +1,8 @@
+local loadstring = loadstring or load
+
 local DBI = require "DBI"
 
+local setfenv = require "PuRest.Util.setfenv"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
