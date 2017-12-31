@@ -3,14 +3,14 @@
 # TODO: manage dependencies via lua rockspec instead of script
 
 function assertLuaDependencyInstalled {
-  if [[ $(luarocks list) != *$1* ]]; then
+  if [[ $(luarocks list $1 | grep -o ^$1) != *$1* ]]; then
       echo "Error: lua dependecy $1 did not successfully install, see luarocks output above" >&2
       exit 1
   fi
 }
 
 function installLuaDependencyIfMissing {
-  if [[ $(luarocks list) != *$1* ]]; then
+  if [[ $(luarocks list $1 | grep -o ^$1) != *$1* ]]; then
     echo "Installing lua dependency $1..."
 
     luarocks install ${luaDependency}
@@ -23,7 +23,7 @@ function installLuaDependencyIfMissing {
 }
 
 function installOpensslIfMissing_MacOsx {
-  if [[ $(brew list) != *openssl* ]]; then
+  if [[ $(brew list openssl) != *openssl* ]]; then
     brew install openssl
 
     # workaround for osx openssl header and lib locations (conform to expected linux paths)
