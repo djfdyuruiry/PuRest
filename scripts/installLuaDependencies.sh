@@ -54,7 +54,7 @@ function main {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     installOpensslIfMissing_MacOsx
   else
-    if ! [ -d "/usr/local/include/openssl" ]; then
+    if ! [ -d "/usr/include/openssl" ]; then
       echo "Error: looks like openssl is not installed, this is required for the luasec library" >&2
       echo "  install openssl using your system package manager and try again" >&2
       exit 1
