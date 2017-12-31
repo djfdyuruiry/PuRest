@@ -1,5 +1,3 @@
-Param([Switch]$runningAsDaemon)
-
 function printWithHeader ($message)
 {
 	$messageLength = $message.Length
@@ -53,7 +51,7 @@ Get-ChildItem "$PSScriptRoot/web" -Filter "*.log" | ForEach-Object `
 	Write-Host
 }
 
-if (-not $runningAsDaemon)
+if ([Environment]::UserInteractive)
 {
 	Read-Host "Press enter to exit..."
 }
