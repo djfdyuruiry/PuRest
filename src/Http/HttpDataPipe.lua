@@ -152,8 +152,7 @@ local function HttpDataPipe (params)
 			end
 			
 			if ServerConfig.socketReceiveBufferSize > 0 then
-				-- TODO: either remove from cfg or find way to set in luasocket
-				--socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
+				socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
 			end
 
 			dataPipe =
@@ -167,8 +166,7 @@ local function HttpDataPipe (params)
 			socket = params.socket
 
 			if ServerConfig.socketSendBufferSize > 0 then
-				-- TODO: either remove from cfg or find way to set in luasocket
-				--socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
+				socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
 			end
 
 			dataPipe =
@@ -205,8 +203,18 @@ local function HttpDataPipe (params)
 
 		--socket:timeout_set(conTimeout)
 
-		-- TODO: either remove from cfg or find way to set in luasocket
-		--socket:setoption('debug', true)
+	--[[
+		Ignore if this set option fails as this requires admin/sudo access
+
+		SO_DEBUG
+			Enable socket debugging. Allowed only for processes with the
+			CAP_NET_ADMIN capability or an effective user ID of 0.
+
+		see: http://man7.org/linux/man-pages/man7/socket.7.html
+	]]
+		pcall(function()
+			 socket:setoption('debug', true)
+		end)
 
 		return dataPipe
 	end
