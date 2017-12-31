@@ -4,7 +4,7 @@ local ServerConfig = require "PuRest.Config.resolveConfig"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 local dns = luaSocket.dns
 
 local CONSTRUCTOR_PARAM_ERR = "HttpDataPipe: You must pass a table containing either {host=..,port=..} if you want " ..
@@ -159,7 +159,7 @@ local function HttpDataPipe (params)
 			dataPipe =
 			{
 				waitForClient = function ()
-					return socket:accept()
+					return socket:acceptfd()
 				end,
 				isBaseSocketLuaSocketWrapper = isBaseSocketLuaSocketWrapper
 			}

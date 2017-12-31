@@ -1,6 +1,9 @@
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 
+local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
+local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -10,14 +13,15 @@ local function convertClientSocketFileDescriptorToHttpDataPipe (fileDescriptor)
             fileDescriptor = {fileDescriptor, Types._number_}
 		}, "convertFileDescriptorToHttpDataPipe")
 
-	local socket = luaSocket.tcp()
-	
-	-- hack to mark this socket as a client, instead of the default of master
-	pcall(function() 
-		socket:connect("*", 0)
-	end)
+	log(string.format("Attempting to convert file descriptor to socket: %d", fileDescriptor), LogLevelMap.DEBUG)
 
-	socket:setfd(fileDescriptor)
+	local socket, err = luaSocket.tcp(fileDescriptor)
+
+	if not socket or err then
+		error(string.format("Error when converting file descriptor to client socket: %s", err))
+	end
+
+	log(string.format("Converted file descriptor to client socket: %d", fileDescriptor), LogLevelMap.DEBUG)
 
 	return HttpDataPipe({socket = socket})
 end

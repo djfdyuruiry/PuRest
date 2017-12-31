@@ -29,7 +29,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 		error("processServerState requires a value for either the threadQueue or socket parameter.")
 	end
 
-	local luaSocket = require "socket"
+	local luaSocket = require "socket-lanes"
 
 	-- Set global thread id.
 	local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
@@ -48,7 +48,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 	local Timer = require "PuRest.Util.Time.Timer"
     local try = require "PuRest.Util.ErrorHandling.try"
 
-	local clientDataPipe
+	local clientDataPipe, peername
 
 	local status, err = pcall(function ()
 		local keepConnectionAlive = false
@@ -93,16 +93,17 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 			else
 				-- Log successful request handling and check if socket connection should be kept alive.
 				clientDataPipe = errOrClientDataPipe
+				peername = peername or clientDataPipe.getClientPeerName(true)
 				keepConnectionAlive = serverState.keepConnectionAlive
 
 				if keepConnectionAlive and serverState.readInRequest then
 					-- Extend keep alive timeout at client's request.
 					timeout = timeout + ServerConfig.httpKeepAliveTimeOutInSecs
 					log(string.format("Read data from client '%s', keeping connection alive and extending request timeout to epoch %d.",
-						clientDataPipe.getClientPeerName(true), timeout), LogLevelMap.INFO)
+						peername, timeout), LogLevelMap.INFO)
 				elseif serverState.readInRequest then
 					log(string.format("Read request from client '%s'.",
-						clientDataPipe.getClientPeerName(true)), LogLevelMap.INFO)
+						peername), LogLevelMap.INFO)
 				end
 
 				if serverState.readInRequest then
@@ -120,13 +121,15 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 		if keepConnectionAlive and os.time() >= timeout then
 			-- Detect and report HTTP keep-alive timeout.
 			log(string.format("Timeout while waiting for more requests from client '%s'.",
-				clientDataPipe.getClientPeerName(true)), LogLevelMap.INFO)
+				peername), LogLevelMap.INFO)
 		end
 
 		if clientDataPipe then
 			log(string.format("Closing socket connection with client '%s'.",
-				clientDataPipe.getClientPeerName(true)), LogLevelMap.INFO)
-			clientDataPipe.terminate()
+				peername), LogLevelMap.INFO)
+
+			pcall(clientDataPipe.terminate)
+			clientDataPipe = nil
 		end
 	end)
 
@@ -135,7 +138,10 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 		log(string.format("Error while running thread: %s", err), LogLevelMap.ERROR)
 
 		if clientDataPipe then
-			clientDataPipe.terminate()
+			log(string.format("Closing socket connection with client '%s'.",
+				peername), LogLevelMap.INFO)
+		
+			pcall(clientDataPipe.terminate)
 		end
 	end
 end

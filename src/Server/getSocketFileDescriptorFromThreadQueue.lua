@@ -1,6 +1,7 @@
 local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
 
 local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

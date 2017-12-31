@@ -58,7 +58,7 @@ local function Route (name, httpMethods, routePattern, action, patternIsRegex, r
 		local trailingSlash = includeOptionalTrailingSlash and "[/]*" or ""
 
 		if urlParamName then
-			return string.format("%s/(?<%s>[^%/^?]+)%s", routePattern, urlParamName, trailingSlash)
+			return string.format([[%s/(?<%s>[^\/^?]+)%s]], routePattern, urlParamName, trailingSlash)
 		end
 
         if urlPartName then

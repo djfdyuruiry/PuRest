@@ -1,6 +1,6 @@
 local JSON = require "JSON"
 local lanes = require "lanes"
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 
 local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
 
@@ -52,13 +52,27 @@ local function Server (enableHttps)
 	local function cleanDeadThreads(threadSlots)
 		for idx, thread in ipairs(threads) do
 			if thread then
-				local threadStatus = threads[idx].thread and threads[idx].thread.status or ""
-				if (threadStatus == "done" or threadStatus == "error") then
+                local threadStatus = thread.thread and thread.thread.status or ""
+                
+                log(string.format("Thread %d status: %s", thread.id, thread.thread.status), LogLevelMap.DEBUG)
+
+                local secondsRunning = luaSocket.gettime() - thread.startTime
+
+				if (threadStatus ~= "running" and threadStatus ~= "waiting") or (secondsRunning > 5) then
 					log(string.format("Thread %d has finished with status '%s', killing thread.",
-                        threads[idx].id, threadStatus), LogLevelMap.DEBUG)
+                        thread.id, threadStatus), LogLevelMap.DEBUG)
+
+                    if threadStatus == "error" then
+                        local _, err = thread.thread:join()
+                        log(string.format("Thread %d error: %s", thread.id, err), LogLevelMap.ERROR)
+                    end
 
 					table.remove(threads, idx)
-					ThreadSlots.markSlotsAsFree(threadSlots, thread.id)
+                    ThreadSlots.markSlotsAsFree(threadSlots, thread.id)
+                    
+                    pcall(function() 
+                        thread:cancel()
+                    end)
 				end
 			end
 		end
@@ -101,36 +115,41 @@ local function Server (enableHttps)
 
 		while serverRunning do
             local clientSocket
+            
+            local threadSlots = ThreadSlotSemaphore.getThreadSlots()
+
+            cleanDeadThreads(threadSlots)
+
+            ThreadSlotSemaphore.setThreadSlots()
 
             try( function()
                 clientSocket = serverDataPipe:waitForClient()
 
                 if clientSocket then
-                    local clientDataPipe = HttpDataPipe({socket = clientSocket})
+--                    local clientDataPipe = HttpDataPipe({socket = clientSocket})
 
-                    log(string.format("%s server on %s Accepted connection with client at '%s'.",
-                        serverType, serverLocation, clientDataPipe.getClientPeerName(true)), LogLevelMap.INFO)
+                    log(string.format("%s server on %s Accepted connection with client on fd '%s'.",
+                        serverType, serverLocation, tostring(clientSocket)), LogLevelMap.INFO)
 
                     if ServerConfig.workerThreads > 1 then
                         local threadSlots = ThreadSlotSemaphore.getThreadSlots()
-
                         local threadId = ThreadSlots.reserveFirstFreeSlot(threadSlots)
-                        cleanDeadThreads(threadSlots)
 
                         ThreadSlotSemaphore.setThreadSlots()
 
                         local thread, threadErr = processServerStateThreadGenerator(threadId, threadQueue,
-                            sessionThreadQueue, clientDataPipe.socket:getfd(), useHttps)
+                            sessionThreadQueue, clientSocket, useHttps)
                         
                         assertThreadStarted(thread, threadErr, "Error starting processServerState thread: %s")
 
                         table.insert(threads,
                             {
                                 thread = thread,
-                                id = threadId
+                                id = threadId,
+                                startTime = luaSocket.gettime()
                             })
                     else
-                        processServerState(1, nil, sessionThreadQueue, clientDataPipe.socket, useHttps)
+                        processServerState(1, nil, sessionThreadQueue, clientSocket, useHttps)
                     end
                 end
             end)
@@ -140,7 +159,8 @@ local function Server (enableHttps)
 
                 if clientSocket then
                     pcall(function ()
-                        clientSocket:close()
+                        local socketHanlde = luaSocket.tcp(clientSocket)
+                        socketHanlde:close()
                     end)
                 end
             end)

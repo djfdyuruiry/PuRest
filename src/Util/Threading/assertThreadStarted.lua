@@ -1,4 +1,4 @@
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"

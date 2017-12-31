@@ -43,6 +43,7 @@ end
 --- Set the thread slot table and unlock the semaphore.
 -- (Values in table set by reference held in semaphore)
 --
+-- TODO: free this when thread finishes
 local function setThreadSlots ()
 	if not threadSlotSemaphore.isHoldingLock() then
 		error("ThreadSlotSemaphore.getThreadCount() must be called before calling setThreadCount.")

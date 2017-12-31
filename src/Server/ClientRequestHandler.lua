@@ -1,7 +1,7 @@
 local luaLinq = require "lualinq"
 local from = luaLinq.from
 
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 local dns = luaSocket.dns
 
 forceRequire = require "PuRest.Util.Module.forceRequire"

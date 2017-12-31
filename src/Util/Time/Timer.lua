@@ -1,4 +1,4 @@
-local luaSocket = require "socket"
+local luaSocket = require "socket-lanes"
 
 local function getTimeNowInMs ()
 	return luaSocket:gettime() * 1000
