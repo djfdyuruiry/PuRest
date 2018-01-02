@@ -39,19 +39,26 @@ local function initHttps (socketFileDescriptor)
 		}, "initHttps")
 
 	local dataPipe = convertClientSocketFileDescriptorToHttpDataPipe(socketFileDescriptor)
-	local luaSecSocket, sslWrapError = ssl.wrap(dataPipe, HTTPS_PARAMS)
+	local host, port = dataPipe.getClientPeerName()
+	local luaSecSocket, sslWrapError = ssl.wrap(dataPipe.socket, HTTPS_PARAMS)
 
 	if not luaSecSocket or sslWrapError then
-		error(string.format("Error wrapping socket for HTTPS encryption: %s", sslWrapError or "unknown error."))
+		error(string.format("Error wrapping socket connected to %s:%s for HTTPS encryption: %s",
+			host,
+			port,
+			(sslWrapError or "unknown error.")))
 	end
 
 	local status, handshakeError = luaSecSocket:dohandshake()
 
 	if not status or handshakeError then
-		error(string.format("Error preforming HTTPS handshake: %s", handshakeError or "unknown error."))
+		error(string.format("Error preforming HTTPS handshake for client at %s:%s: %s", 
+			host,
+			port,
+			(handshakeError or "unknown error.")))
 	end
 
-	return HttpDataPipe({socket = luaSecSocket})
+	return HttpDataPipe({socket = luaSecSocket, socketHost = host, socketPort = port})
 end
 
 return initHttps

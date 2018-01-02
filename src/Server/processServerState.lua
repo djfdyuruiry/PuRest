@@ -4,20 +4,25 @@ local function buildHttpsDataPipe(socket, threadQueue)
 	local try = require "PuRest.Util.ErrorHandling.try"
 
 	log("Server client sockets required by configuration to use HTTPS encryption.", LogLevelMap.INFO)			
-	log("Attempting to encrypt socket for HTTPS communication.", LogLevelMap.DEBUG)
+
+	if socket then
+		log(string.format("Attempting to encrypt socket for HTTPS communication for socket, file descriptor: %d", socket), 
+			LogLevelMap.DEBUG)
+	end
 
 	local clientDataPipe
 
 	try(function() 
 		local getSocketFileDescriptorFromThreadQueue = "PuRest.Server.getSocketFileDescriptorFromThreadQueue"
 		local initHttps = require "PuRest.Security.LuaSecInterop.initHttps"
-		
-		if not socket then
+		local clientSocket = socket
+
+		if not clientSocket then
 			-- No socket passed in, fetch file descriptor from thread queue
-			socket = getSocketFileDescriptorFromThreadQueue(threadQueue)
+			clientSocket = getSocketFileDescriptorFromThreadQueue(threadQueue)
 		end
 
-		clientDataPipe = initHttps(socket)
+		clientDataPipe = initHttps(clientSocket)
 		
 		log("Successfully encrypted client socket for use as HTTPS data pipe.", LogLevelMap.DEBUG)
 	end).

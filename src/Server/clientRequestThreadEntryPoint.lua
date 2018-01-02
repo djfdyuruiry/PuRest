@@ -9,7 +9,9 @@
 -- @param useHttps Use HTTPS when communicating with clients.
 --
 local function clientRequestThreadEntryPoint (threadId, threadQueue, sessionThreadQueue, socket, useHttps)
-    -- in new thread, need to get dependencies when executed instead of when included
+	-- in new thread, need to get dependencies when executed instead of when included
+	local log = require "PuRest.Logging.FileLogger"
+	local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 	local try = require "PuRest.Util.ErrorHandling.try"
 	local Types = require "PuRest.Util.ErrorHandling.Types"
 	local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"

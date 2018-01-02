@@ -12,11 +12,11 @@ local CONSTRUCTOR_PARAM_ERR = "HttpDataPipe: You must pass a table containing ei
 
 --- Abstract interface for server components to use to digest a HTTP data stream
 -- from a network socket. Server config is applied to socket config and server
--- sockets are bound in the constructor.
+-- sockets are bound in the constructor; supports both LuaSocket and LuaSec libraries.
 --
--- @param params A table containing either {host=..,port=..}
---							 if you want a server data pipe or {socket=..}
---							 when building a client HTTP channel.
+-- @param params A table containing either {host=..,port=..} if you want a server data pipe 
+--				 	or {socket=..} when building a LuaSocket client HTTP channel
+--				 	or {socket=..,socketHost=...,socketPort=...} when building a LuaSocket client HTTP channel
 --
 local function HttpDataPipe (params)
 	validateParameters(
@@ -25,19 +25,23 @@ local function HttpDataPipe (params)
 		},
 		"HttpDataPipe")
 
-	-- Proxy class instance.
-	local dataPipe
-	-- Full implementation class instance.
+	-- LuaSocket or LuaSec socket class instance
 	local socket
-	local baseSocketIsLuaSecWrapper = false
+	
+	-- certain features don't work with LuaSec sockets, we need a flag to avoid these
+	local usingLuaSecSocket
 
-    --- Check if the base socket is a LuaSec socket wrapper.
-    -- (Use with client sockets only.)
-    --
-    -- @return Is the base socket a LuaSec socket wrapper.
-    --
-	local function isBaseSocketLuaSocketWrapper ()
-		return baseSocketIsLuaSecWrapper
+	-- LuaSec sockets don't support getting client details, instead we pass these in params
+	local socketHost, socketPort
+
+	local function readLine ()
+		local response, err = socket:receive("*l")
+
+		if err then
+			error(string.format("Socket receive line error: '%s'", tostring(err)))
+		end
+
+		return response
 	end
 
 	--- Read in a line from the data pipe and pattern match inital HTTP request line.
@@ -45,7 +49,7 @@ local function HttpDataPipe (params)
 	-- @return Captures for method, location and protocol.
     --
 	local function getMethodLocationProtocol ()
-		local request = dataPipe.readLine() or ""
+		local request = readLine() or ""
 		return request:match('^(%w+)%s+(%S+)%s+(%S+)')
 	end
 
@@ -55,7 +59,7 @@ local function HttpDataPipe (params)
 	--
     local function getHeaders ()
 		local headers = {}
-		local line = dataPipe.readLine()
+		local line = readLine()
 
 		while line do
 			line = line:gsub("\r", "") or line
@@ -67,11 +71,23 @@ local function HttpDataPipe (params)
 			end
 
 			headers[name] = value or ""
-			line = dataPipe.readLine()
+			line = readLine()
 		end
 
 		return headers
-    end
+	end
+
+	local function getClientPeerName (format)
+		local host, port = not usingLuaSecSocket and 		
+			socket:getpeername() or
+			socketHost, socketPort
+
+		if format then
+			return tostring(host) .. ":" .. tostring(port) 
+		else
+			return tostring(host), tostring(port)
+		end
+	end
 
     --- Determine if socket is client or server and bind to the
     -- specified host an port, after type checking, for server ports.
@@ -117,12 +133,25 @@ local function HttpDataPipe (params)
 					params_port = {params.port, Types._number_}
 				},
 				"HttpDataPipe.construct")
+			
+			usingLuaSecSocket = false
 		elseif params.socket then
 			validateParameters(
 				{
 					params_socket = {params.socket, Types._userdata_}
 				},
 				"HttpDataPipe.construct")
+
+			usingLuaSecSocket = params.socket.setoption == nil
+
+			if usingLuaSecSocket then
+				validateParameters(
+					{
+						params_socketHost = {params.socketHost, Types._string_},
+						params_socketPort = {params.socketPort, Types._string_}
+					},
+					"HttpDataPipe.construct")
+			end
 		else
 			error(CONSTRUCTOR_PARAM_ERR)
 		end
@@ -130,7 +159,10 @@ local function HttpDataPipe (params)
 		-- TODO: investigate issues with timeouts...
 		--local conTimeout = ServerConfig.connectionTimeOutInMs > 0 and ServerConfig.connectionTimeOutInMs * 1000 or 10000
 
+		local dataPipe;
+
 		if params.host and params.port then
+			-- server
 			local _, bindErr
 
 			socket = luaSocket.tcp()
@@ -151,46 +183,29 @@ local function HttpDataPipe (params)
                     (listenErr or "unknown error")))
 			end
 			
-			if ServerConfig.socketReceiveBufferSize > 0 then
+			if ServerConfig.socketReceiveBufferSize > 0 and not usingLuaSecSocket then
 				socket:setoption("rcvbuf", ServerConfig.socketReceiveBufferSize)
 			end
 
 			dataPipe =
 			{
-				waitForClient = function ()
-					return socket:acceptfd()
-				end,
-				isBaseSocketLuaSocketWrapper = isBaseSocketLuaSocketWrapper
+				waitForClient = methodProxy(socket, "acceptfd")
 			}
 		else
+			-- client
 			socket = params.socket
 
-			if ServerConfig.socketSendBufferSize > 0 then
+			if ServerConfig.socketSendBufferSize > 0 and not usingLuaSecSocket then
 				socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)
 			end
 
 			dataPipe =
 			{
-				getClientPeerName = function (format)
-				    local host, port = socket:getpeername()				
-					if format then
-                        return tostring(host) .. ":" .. tostring(port) 
-                    else
-                        return tostring(host), tostring(port)
-                    end
-				end,
+				getClientPeerName = getClientPeerName,
 				getMethodLocationProtocol = getMethodLocationProtocol,
 				getHeaders = getHeaders,
 				read = methodProxy(socket, "receive"),
-				readLine = function ()
-					local response, err = socket:receive("*l")
-
-					if err then
-						error(string.format("Socket Error: '%s'", tostring(err)))
-					end
-
-					return response
-				end,
+				readLine = readLine,
 				readChars = methodProxy(socket, "receive"),
 				write = methodProxy(socket, "send"),
 				isBaseSocketLuaSocketWrapper = isBaseSocketLuaSocketWrapper
@@ -212,9 +227,11 @@ local function HttpDataPipe (params)
 
 		see: http://man7.org/linux/man-pages/man7/socket.7.html
 	]]
-		pcall(function()
-			 socket:setoption('debug', true)
-		end)
+		if not usingLuaSecSocket then
+			pcall(function()
+				socket:setoption('debug', true)
+			end)
+		end
 
 		return dataPipe
 	end
