@@ -1,6 +1,6 @@
 local JSON = require "JSON"
-local luaSocket = require "socket-lanes"
 
+local convertClientSocketFileDescriptorToHttpDataPipe = require "PuRest.Util.Networking.convertClientSocketFileDescriptorToHttpDataPipe"
 local clientRequestThreadEntryPoint = require "PuRest.Server.clientRequestThreadEntryPoint"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
@@ -178,8 +178,8 @@ local function Server (enableHttps)
 
                 if clientSocket then
                     pcall(function ()
-                        local socketHandle = luaSocket.tcp(clientSocket)
-                        socketHanlde:close()
+                        local dataPipe = convertClientSocketFileDescriptorToHttpDataPipe(clientSocket)
+                        dataPipe.terminate()
                     end)
                     
                     -- clear clientSocket, reset for next listenForClients call

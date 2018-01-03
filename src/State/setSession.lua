@@ -1,6 +1,7 @@
 local getSessionId = require "PuRest.State.getSessionId"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
+local Time = require "PuRest.Util.Time.Time"
 local Timer = require "PuRest.Util.Time.Timer"
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
@@ -28,7 +29,7 @@ local function saveSessionData (sessions, sessionId, sessionData, isUserAgent, t
 
 	-- Update session and extend timeout value.
 	local key = isUserAgent and "userAgentSessions" or "clientSessions"
-	local sessionTimeoutInEpochSecs = os.time() + (timeoutInMins * 60)
+	local sessionTimeoutInEpochSecs = Time.getTimeNowInSecs() + (timeoutInMins * 60)
 
 	local session = sessions[key][sessionId]
 	session.data = sessionData

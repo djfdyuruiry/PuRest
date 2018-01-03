@@ -1,8 +1,4 @@
-local luaSocket = require "socket-lanes"
-
-local function getTimeNowInMs ()
-	return luaSocket:gettime() * 1000
-end
+local Time = require "PuRest.Util.Time.Time"
 
 --- Profile timer to measure time in milliseconds between
 -- Timer object created and call of endTimeNow().
@@ -22,14 +18,14 @@ local function Timer ()
     -- @return The time amount in milliseconds.
     --
 	local function endTimeNow ()
-		local endTime = (getTimeNowInMs() - startTime)
+		local endTime = (Time.getTimeNowInMs() - startTime)
 		return endTime
 	end
 
     --- Start the timer by recording instantiation time.
     --
 	local function construct ()
-		startTime = getTimeNowInMs()
+		startTime = Time.getTimeNowInMs()
 
 		return
 		{

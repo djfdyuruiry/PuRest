@@ -1,6 +1,7 @@
-local luaSocket = require "socket-lanes"
 local lanes = require "lanes"
 
+local sleep = require "PuRest.Util.Threading.sleep"
+local Time = require "PuRest.Util.Time.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -33,7 +34,7 @@ local function Thread (entryPoint, humanReadableId, errorMessageTemplate)
     local function getSecondsSinceStart ()
         assert(thread, "getSecondsSinceStart cannot be called until Thread has been started")
 
-        return os.time() - threadStartTime
+        return Time.getTimeNowInSecs() - threadStartTime
     end
 
     local function safeStop()
@@ -65,7 +66,7 @@ local function Thread (entryPoint, humanReadableId, errorMessageTemplate)
         local pendingWaitingTimeInMs = 0
     
         while thread.status == "pending" and pendingWaitingTimeInMs < PENDING_STATUS_TIMEOUT_MS do
-            luaSocket.sleep(PENDING_SLEEP_INTERVAL_MS)
+            sleep(PENDING_SLEEP_INTERVAL_MS)
             
             pendingWaitingTimeInMs = pendingWaitingTimeInMs + PENDING_SLEEP_INTERVAL_MS
         end
@@ -93,7 +94,7 @@ local function Thread (entryPoint, humanReadableId, errorMessageTemplate)
         assertThreadStarted()
 
         threadId = buildThreadId()
-        threadStartTime = os.time()
+        threadStartTime = Time.getTimeNowInSecs()
     end
 
     local function join ()
@@ -129,6 +130,7 @@ local function Thread (entryPoint, humanReadableId, errorMessageTemplate)
     return
     {
         start = start,
+        safeStop = safeStop,
         join = join,
         getThreadId = getThreadId,
         getThreadError = getThreadError,

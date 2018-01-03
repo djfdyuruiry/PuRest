@@ -1,12 +1,10 @@
 local luaLinq = require "lualinq"
 local from = luaLinq.from
 
-local luaSocket = require "socket-lanes"
-local dns = luaSocket.dns
-
 forceRequire = require "PuRest.Util.Module.forceRequire"
 
 local ContentTypes = require "PuRest.Http.ContentTypes"
+local Dns = require "PuRest.Util.Networking.Dns"
 local extractAuthenticationData = require "PuRest.Security.extractAuthenticationData"
 local HttpState = require "PuRest.State.HttpState"
 local log = require "PuRest.Logging.FileLogger"
@@ -322,7 +320,7 @@ local function ClientRequestHandler (routeMap, siteConfig, urlNamespace)
 			if h[2] then
 				log("Preforming host validation by DNS lookup.", LogLevelMap.INFO)
 
-				return dns.tohostname(ipAddress) == dns.tohostname(h[1])
+				return Dns.tohostname(ipAddress) == Dns.tohostname(h[1])
 			else
 				log("Preforming host validation by string comparison.", LogLevelMap.INFO)
 				return host == h[1]

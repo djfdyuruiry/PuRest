@@ -34,8 +34,6 @@ local function buildHttpsDataPipe(socket, threadQueue)
 end
 
 local function processServerState (threadId, threadQueue, sessionThreadQueue, socket, useHttps, outputVariables)
-	local luaSocket = require "socket-lanes"
-
 	local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 	local ServerConfig = require "PuRest.Config.resolveConfig"
 	
@@ -45,12 +43,14 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 	local Semaphore = require "PuRest.Util.Threading.Semaphore"
 	local SessionData = require "PuRest.State.SessionData"
 	local Site = require "PuRest.Server.Site"
+	local sleep = require "PuRest.Util.Threading.sleep"
+	local Time = require "PuRest.Util.Time.Time"
 	local Timer = require "PuRest.Util.Time.Timer"
 	local try = require "PuRest.Util.ErrorHandling.try"
 
 	local keepConnectionAlive = false
 	local defaultSite = Site("http", "/", nil, ServerConfig.htmlDirectory, true)
-	local timeout = os.time() + ServerConfig.httpKeepAliveTimeOutInSecs
+	local timeout = Time.getTimeNowInSecs() + ServerConfig.httpKeepAliveTimeOutInSecs
 	local clientDataPipe
 
 	CurrentThreadId.setCurrentThreadId(threadId)
@@ -104,11 +104,11 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 
 		if keepConnectionAlive then
 			-- Prevent high CPU usage when waiting for another request.
-			luaSocket.sleep(0.01)
+			sleep(0.01)
 		end
-	until not keepConnectionAlive or os.time() >= timeout
+	until not keepConnectionAlive or Time.getTimeNowInSecs() >= timeout
 
-	if keepConnectionAlive and os.time() >= timeout then
+	if keepConnectionAlive and Time.getTimeNowInSecs() >= timeout then
 		-- Detect and report HTTP keep-alive timeout.
 		log(string.format("Timeout while waiting for more requests from client '%s'.",
 			peername), LogLevelMap.WARN)

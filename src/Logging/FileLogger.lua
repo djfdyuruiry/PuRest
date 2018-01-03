@@ -13,10 +13,11 @@ local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 local LogFiles = require "PuRest.Logging.LogFiles"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local ServerConfig = require "PuRest.Config.resolveConfig"
+local Time = require "PuRest.Util.Time.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local nextLogCheck = os.time() + ServerConfig.logging.clearDownIntervalInSecs
+local nextLogCheck = Time.getTimeNowInSecs() + ServerConfig.logging.clearDownIntervalInSecs
 
 --- Check that file is not over log file size in the server config, if
 -- it is delete it.
@@ -32,7 +33,7 @@ local function checkLogFileSize (logPath)
         },
         "FileLogger.checkLogFileSize")
 
-    nextLogCheck = os.time() + ServerConfig.logging.clearDownIntervalInSecs
+    nextLogCheck = Time.getTimeNowInSecs() + ServerConfig.logging.clearDownIntervalInSecs
 
     local fileStat, err = luaFileSystem.attributes(logPath)
 
@@ -64,7 +65,7 @@ local function logToFile (threadId, msg, level)
 	local logToUse = threadId < 1 and LogFiles.server or string.format(LogFiles.worker, threadId)
 	local logPath = (string.format("%s/%s", ServerConfig.logging.logPath, logToUse):gsub("//", "/"))
 
-    if os.time() > nextLogCheck then
+    if Time.getTimeNowInSecs() > nextLogCheck then
         checkLogFileSize(logPath)
     end
     

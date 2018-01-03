@@ -3,6 +3,7 @@ local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local Timer = require "PuRest.Util.Time.Timer"
 local try = require "PuRest.Util.ErrorHandling.try"
+local Time = require "PuRest.Util.Time.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -33,7 +34,7 @@ local function lookupSession (sessions, sessionId, isUserAgent)
 	end
 
 	-- Check if current session has expired.
-	if session.expiryEpochTime and os.time() >= tonumber(session.expiryEpochTime) then
+	if session.expiryEpochTime and Time.getTimeNowInSecs() >= tonumber(session.expiryEpochTime) then
 		sessions[key][sessionId] = nil
 		collectgarbage()
 

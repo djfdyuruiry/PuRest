@@ -1,6 +1,7 @@
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local ServerConfig = require "PuRest.Config.resolveConfig"
+local Time = require "PuRest.Util.Time.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -26,7 +27,7 @@ local function getSiteFromCache (location)
     local cachedSite = siteCache[location]
 
     if cachedSite and cachedSite.expiryTime and
-       os.time() < cachedSite.expiryTime then
+       Time.getTimeNowInSecs() < cachedSite.expiryTime then
         return cachedSite.site
     elseif siteCache then
         log(string.format("Site '%s' has been expired and will be removed from the site cache.", location),
@@ -81,7 +82,7 @@ local function setSiteInCache (location, site)
     siteCache[location] =
     {
         site = site,
-        expiryTime = os.time() + ServerConfig.siteCacheExpiryInSecs
+        expiryTime = Time.getTimeNowInSecs() + ServerConfig.siteCacheExpiryInSecs
     }
 
     log(string.format("Site '%s' has been added to the site cache.", location),
