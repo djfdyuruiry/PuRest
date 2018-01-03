@@ -1,7 +1,5 @@
-local lanes = require "lanes"
-
-local assertThreadStarted = require "PuRest.Util.Threading.assertThreadStarted"
 local try = require "PuRest.Util.ErrorHandling.try"
+local Thread = require "PuRest.Util.Threading.Thread"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -31,12 +29,11 @@ local function startServerThread (threadCountQueue, sessionsQueue, useHttps)
 
     local server = Server(useHttps)
 
+    -- TODO: how to abstract set_finalizer function if it's injected into thread env on start??
     set_finalizer(server.stopServer)
 
     server.startServer()
 end
-
-local startServerThreadGenerator = lanes.gen("*", {cancelstep = true}, startServerThread)
 
 --- Start a server in a new thread, errors are thrown if there was an
 -- error starting the thread; this function does not block.
@@ -56,13 +53,15 @@ local function startServer (threadSlotQueue, sessionQueue, useHttps)
     local thread
 
     try ( function ()
-        local threadErr
-        thread, threadErr = startServerThreadGenerator(threadSlotQueue, sessionQueue, useHttps)
+        local threadId = string.format("%s_server", useHttps and "https" or "http")
+        
+        thread = Thread(startServerThread, threadId)
 
-        assertThreadStarted(thread, threadErr, "Error starting server thread: %s")
+        thread.start(threadSlotQueue, sessionQueue, useHttps)
     end)
     .catch( function(ex)
-        error(string.format("Error starting HTTPS server: %s.", ex))
+        thread = nil
+        error(string.format("Error starting server: %s.", ex))
     end)
 
     return thread

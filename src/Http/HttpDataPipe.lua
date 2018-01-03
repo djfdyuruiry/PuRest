@@ -78,9 +78,13 @@ local function HttpDataPipe (params)
 	end
 
 	local function getClientPeerName (format)
-		local host, port = not usingLuaSecSocket and 		
-			socket:getpeername() or
-			socketHost, socketPort
+		local host, port
+		
+		if not usingLuaSecSocket then
+			host, port = socket:getpeername()
+		else
+			host, port = socketHost, socketPort
+		end
 
 		if format then
 			return tostring(host) .. ":" .. tostring(port) 
@@ -194,6 +198,11 @@ local function HttpDataPipe (params)
 		else
 			-- client
 			socket = params.socket
+			
+			if usingLuaSecSocket then 
+				socketHost = params.socketHost
+				socketPort = params.socketPort
+			end
 
 			if ServerConfig.socketSendBufferSize > 0 and not usingLuaSecSocket then
 				socket:setoption("sndbuf", ServerConfig.socketSendBufferSize)

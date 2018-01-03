@@ -1,21 +1,22 @@
 local JSON = require "JSON"
-local lanes = require "lanes"
 local luaSocket = require "socket-lanes"
 
-local DEFAULT_LINDA_KEY = require "PuRest.Util.Threading.defaultLindaKey"
-
-local assertThreadStarted = require "PuRest.Util.Threading.assertThreadStarted"
 local clientRequestThreadEntryPoint = require "PuRest.Server.clientRequestThreadEntryPoint"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local registerSignalHandler = require "PuRest.Util.System.registerSignalHandler"
+local Semaphore = require "PuRest.Util.Threading.Semaphore"
 local SessionData = require "PuRest.State.SessionData"
 local ServerConfig = require "PuRest.Config.resolveConfig"
+local Thread = require "PuRest.Util.Threading.Thread"
 local ThreadSlots = require "PuRest.Util.Threading.ThreadSlots"
 local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
+local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
+
+local THREAD_TIMEOUT_IN_SECS = 300 -- 5 minutes
 
 --- A web server using the Data Pipe abstraction as the HTTP comms API.
 --
@@ -40,42 +41,53 @@ local function Server (enableHttps)
 	--- Mutlithreading objects.
     local threads = ServerConfig.workerThreads > 1 and {} or nil
     
-    local threadQueue = ServerConfig.workerThreads > 1 and lanes.linda() or nil
+    local threadQueue = ServerConfig.workerThreads > 1 and Semaphore() or nil
 	local sessionThreadQueue = SessionData.getThreadQueue()
-    local clientRequestThreadGenerator = lanes.gen("*", clientRequestThreadEntryPoint)
+
+    local function cleanThreadIfDead (thread, threadIndex, threadSlots)
+        local threadIsAlive = thread.isAlive()
+        local threadId = thread.getThreadId()
+        
+        log(string.format("Thread %s is alive? %s", threadId, threadIsAlive), LogLevelMap.DEBUG)
+
+        local secondsRunning = thread.getSecondsSinceStart()
+        local threadHasBeenRunningForTooLong = secondsRunning > THREAD_TIMEOUT_IN_SECS
+
+        if threadIsAlive and not threadHasBeenRunningForTooLong then
+            return
+        end
+    
+        local threadError = thread.getThreadError()
+
+        if threadError then
+            log(string.format("Thread %d terminated due to error: %s", threadId, threadError), 
+                LogLevelMap.ERROR)
+        elseif threadIsAlive and threadHasBeenRunningForTooLong then
+            log(string.format("Thread %d has been running for too long (%ds), killing thread", 
+                threadId, secondsRunning), LogLevelMap.DEBUG)
+        else
+            log(string.format("Thread %d has finished", threadId),
+                LogLevelMap.DEBUG)
+        end
+        
+        log(string.format("Cleaning dead thread %d", threadId), LogLevelMap.DEBUG)
+
+        thread.safeStop()
+
+        table.remove(threads, threadIndex)
+
+        ThreadSlots.markSlotsAsFree(threadSlots, tonumber(threadId))
+    end
 
     --- Clean any dead threads and donate the id's of dead threads
     -- back to the pool
     --
-    -- @param threadSlots Current thread pool slots.
-    --
-	local function cleanDeadThreads()
+	local function cleanDeadThreads ()
         local threadSlots = ThreadSlotSemaphore.getThreadSlots()
 
 		for idx, thread in ipairs(threads) do
 			if thread then
-                local threadStatus = thread.thread and thread.thread.status or ""
-                
-                log(string.format("Thread %d status: %s", thread.id, thread.thread.status), LogLevelMap.DEBUG)
-
-                local secondsRunning = luaSocket.gettime() - thread.startTime
-
-				if (threadStatus ~= "running" and threadStatus ~= "waiting") or (secondsRunning > 5) then
-					log(string.format("Thread %d has finished with status '%s', killing thread.",
-                        thread.id, threadStatus), LogLevelMap.DEBUG)
-
-                    if threadStatus == "error" then
-                        local _, err = thread.thread:join()
-                        log(string.format("Thread %d error: %s", thread.id, err), LogLevelMap.ERROR)
-                    end
-
-					table.remove(threads, idx)
-                    ThreadSlots.markSlotsAsFree(threadSlots, thread.id)
-                    
-                    pcall(function() 
-                        thread:cancel()
-                    end)
-				end
+                cleanThreadIfDead(thread, idx, threadSlots)
 			end
         end
         
@@ -83,7 +95,7 @@ local function Server (enableHttps)
     end
 
     --- Shutdown the server
-    local function stopServer(err, stackTrace)
+    local function stopServer (err, stackTrace)
         local errorMessage
 
         if err then
@@ -97,8 +109,10 @@ local function Server (enableHttps)
         serverRunning = false
 
         reasonForShutdown = tostring(reason or "unknown reason")
-        log(string.format("%s server on %s has been shutdown: %s..", serverType, serverLocation, reasonForShutdown),
-            LogLevelMap.WARN)
+        log(string.format("%s server on %s has been shutdown: %s..", 
+            serverType, 
+            serverLocation, 
+            reasonForShutdown), LogLevelMap.WARN)
 
         if serverDataPipe then
             pcall(serverDataPipe.terminate)
@@ -132,17 +146,11 @@ local function Server (enableHttps)
         ThreadSlotSemaphore.setThreadSlots()
 
         -- multiple worker threads enabled in configuration, process request in the background
-        local thread, threadErr = clientRequestThreadGenerator(threadId, threadQueue,
-            sessionThreadQueue, clientSocket, useHttps)
-        
-        assertThreadStarted(thread, threadErr, "Error starting processServerState thread: %s")
+        local thread = Thread(clientRequestThreadEntryPoint, tostring(threadId))
 
-        table.insert(threads,
-        {
-            thread = thread,
-            id = threadId,
-            startTime = luaSocket.gettime()
-        })
+        thread.start(threadId, threadQueue.getThreadQueue(), sessionThreadQueue, clientSocket, useHttps)
+
+        table.insert(threads, thread)
         
         -- clear clientSocket, not needed for error handling
         clientSocket = nil
@@ -205,7 +213,7 @@ local function Server (enableHttps)
     -- attached here to enable cleanup of server socket before process end.
     local function construct ()
         if ServerConfig.workerThreads > 1 then
-            threadQueue:limit(DEFAULT_LINDA_KEY, ServerConfig.workerThreads)
+            threadQueue.setLimit(ServerConfig.workerThreads)
         end
 
         return

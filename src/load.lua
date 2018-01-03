@@ -27,18 +27,22 @@ local function startServerWithHttps (serverErrors)
     }
 
     local cancelThreads = function()
-        serverThreads[1]:cancel()
-        serverThreads[2]:cancel()
+        serverThreads[1].safeStop()
+        serverThreads[2].safeStop()
     end
     
     registerSignalHandler("SIGINT", cancelThreads)
     registerSignalHandler("SIGTERM", cancelThreads)
+
+    
     
     for _, thread in ipairs(serverThreads) do
-        local _, threadError = thread:join()
+        thread.join()
+
+        local threadError = thread.getThreadError()
         
         if threadError then
-         table.insert(serverErrors, threadError)
+            table.insert(serverErrors, threadError)
         end
     end
 end
@@ -70,8 +74,8 @@ local function load()
         -- Assert a suitable environment variable is present
         assert((os.getenv("PUREST_WEB") or os.getenv("PUREST")), 
             "Please set the PUREST_WEB or PUREST environment variables!")
-
-        -- Init lanes
+        
+        -- Init threading lib
         require "lanes".configure()
 
         -- Ensure server config is loaded before any server code runs.
