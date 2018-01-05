@@ -29,4 +29,4 @@ curl -L https://luarocks.org/releases/luarocks-2.4.2.tar.gz | tar xzf - && \
     cd .. && rm luarocks-2.4.2 -r
 
 ## install PuRest lua dependencies
-curl https://raw.githubusercontent.com/djfdyuruiry/PuRest/master/scripts/installLuaDependencies.sh | sudo sh
+curl https://raw.githubusercontent.com/djfdyuruiry/PuRest/master/scripts/installLuaDependencies.sh | sudo bash -s
