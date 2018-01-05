@@ -1,6 +1,6 @@
 ## install system utils
-sudo apt-get update
-sudo yes | apt-get install curl apt-transport-https tar unzip
+sudo apt-get -y update
+sudo apt-get -y install curl apt-transport-https tar
 
 ## register the ms ubuntu repo
 curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
@@ -8,7 +8,7 @@ curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 curl https://packages.microsoft.com/config/ubuntu/14.04/prod.list | sudo tee etc/apt/sources.list.d/microsoft.list
 
 ## install packages needed by lua, luarocks and PuRest
-sudo apt-get update
+sudo apt-get -y update
 sudo apt-get -y install build-essential unzip git \
     openssl libssl-dev  \
     libreadline6-dev libpcre3-dev \
