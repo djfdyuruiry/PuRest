@@ -6,7 +6,7 @@ $releaseDir = "$PSScriptRoot/build/release"
 $releaseWebDir = "$PSScriptRoot/build/release/web"
 $releaseLuaDir = "$PSScriptRoot/build/release/lua"
 
-$webAppsPath = "$PSScriptRoot/../PuRest Web Apps"
+$webAppsPath = "$PSScriptRoot/../PuRest-web-apps"
 
 if (Test-Path $releaseDir)
 {
