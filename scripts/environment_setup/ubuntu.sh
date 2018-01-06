@@ -1,5 +1,5 @@
 ## install system utils
-sudo apt-get -y update
+sudo apt-get update
 sudo apt-get -y install curl apt-transport-https tar
 
 ## register the ms ubuntu repo
@@ -7,10 +7,10 @@ curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 
 UBUNTU_VERSION=$(echo $(lsb_release -r) | sed 's/Release: //g')
 
-curl https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/prod.list | sudo tee etc/apt/sources.list.d/microsoft.list
+curl https://packages.microsoft.com/config/ubuntu/17.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft.list
 
 ## install packages needed by lua, luarocks and PuRest
-sudo apt-get -y update
+sudo apt-get update
 sudo apt-get -y install build-essential unzip git \
     openssl libssl-dev  \
     libreadline6-dev libpcre3-dev \
