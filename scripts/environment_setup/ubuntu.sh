@@ -5,7 +5,9 @@ sudo apt-get -y install curl apt-transport-https tar
 ## register the ms ubuntu repo
 curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 
-curl https://packages.microsoft.com/config/ubuntu/14.04/prod.list | sudo tee etc/apt/sources.list.d/microsoft.list
+UBUNTU_VERSION=$(echo $(lsb_release -r) | sed 's/Release: //g')
+
+curl https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/prod.list | sudo tee etc/apt/sources.list.d/microsoft.list
 
 ## install packages needed by lua, luarocks and PuRest
 sudo apt-get -y update
