@@ -7,6 +7,11 @@
             "label": "buildAndRun",
             "type": "shell",
             "command": "powershell ./buildAndRun.ps1"
+        },
+        {
+            "label": "buildAndRun_wsl",
+            "type": "shell",
+            "command": "./buildAndRun_wsl.bat"
         }
     ]
 }
