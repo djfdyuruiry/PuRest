@@ -22,7 +22,7 @@ function GetProcessesUsingPortsOnWindows
 
 $pidsUsingPorts
 
-if ($PSVersionTable.Platform -eq "Unix")
+if ($PSVersionTable.Platform -and ($PSVersionTable.Platform -eq "Unix"))
 {
     $pidsUsingPorts += lsof -ti tcp:8888
     $pidsUsingPorts += lsof -ti tcp:4430
