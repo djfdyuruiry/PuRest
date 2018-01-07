@@ -1,3 +1,6 @@
+$releaseWebDir = "$PSScriptRoot/build/release/web"
+$webAppsPath = "$PSScriptRoot/../PuRest-web-apps"
+
 function GetProcessesUsingPortsOnWindows
 {
     $processes = @((netstat -o -n -a | findstr ":8888"), `
@@ -17,25 +20,44 @@ function GetProcessesUsingPortsOnWindows
     ,$pids
 }
 
-
-& "$PSScriptRoot/build.ps1"
-
-$pidsUsingPorts
-
-if ($PSVersionTable.Platform -and ($PSVersionTable.Platform -eq "Unix"))
+function KillProcessesUsingServerPorts
 {
-    $pidsUsingPorts += lsof -ti tcp:8888
-    $pidsUsingPorts += lsof -ti tcp:4430
-}
-else
-{
-    $pidsUsingPorts = GetProcessesUsingPortsOnWindows
+    $pidsUsingPorts
+
+    if ($PSVersionTable.Platform -and ($PSVersionTable.Platform -eq "Unix"))
+    {
+        $pidsUsingPorts += lsof -ti tcp:8888
+        $pidsUsingPorts += lsof -ti tcp:4430
+    }
+    else
+    {
+        $pidsUsingPorts = GetProcessesUsingPortsOnWindows
+    }
+
+    foreach ($pidUsingPort in $pidsUsingPorts)
+    {
+        Write-Host "Killing process with id $pidUsingPort currently using port 8888/4430"
+        Stop-Process -Id $pidUsingPort -Force
+    }
 }
 
-foreach ($pidUsingPort in $pidsUsingPorts)
+function BuildServerAndDeployWebApps
 {
-    Write-Host "Killing process with id $pidUsingPort currently using port 8888/4430"
-    Stop-Process -Id $pidUsingPort -Force
+    & "$PSScriptRoot/build.ps1"
+
+    # copy in web apps repo if present
+    if (Test-Path $webAppsPath)
+    {
+        Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Verbose
+    }
 }
 
-& "$PSScriptRoot/build/release/startServer.ps1"
+function Main
+{        
+    BuildServerAndDeployWebApps
+    KillProcessesUsingServerPorts
+
+    & "$PSScriptRoot/build/release/startServer.ps1"
+}
+
+Main

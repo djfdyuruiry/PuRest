@@ -1,3 +1,4 @@
+local methodProxy = require "PuRest.Util.ParameterPassing.methodProxy"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -39,14 +40,10 @@ local function Process (path, humanReadableName, args)
 	local function readAndCloseStream (stream, streamType, standardErrorFilename)
 		local out, readErr = stream:read('*all')
 
-		pcall(function()
-			stream:close()
-		end)
+		pcall(methodProxy(stream, "close"))
 
 		if streamType == "err" then
-			pcall(function()
-				os.remove(standardErrorFilename)
-			end)
+			pcall(os.remove, standardErrorFilename)
 		end
 
 		if not out and readErr then
@@ -83,7 +80,7 @@ local function Process (path, humanReadableName, args)
 	end
 
     --- Run the process handle with the arguments specified, this
-    -- can only be called once. Error is thrown if there is an issue setting
+    -- can be called multiple times. An error is thrown if there is an issue setting
     -- up the process or any output was written to standard err from the process.
     --
     -- @return A string containing all the output from process standard out.
