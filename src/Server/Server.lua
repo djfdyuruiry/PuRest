@@ -1,5 +1,3 @@
-local JSON = require "JSON"
-
 local convertClientSocketFileDescriptorToHttpDataPipe = require "PuRest.Util.Networking.convertClientSocketFileDescriptorToHttpDataPipe"
 local clientRequestThreadEntryPoint = require "PuRest.Server.clientRequestThreadEntryPoint"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
@@ -7,8 +5,9 @@ local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local registerSignalHandler = require "PuRest.Util.System.registerSignalHandler"
 local Semaphore = require "PuRest.Util.Threading.Semaphore"
-local SessionData = require "PuRest.State.SessionData"
+local Serialization = require "PuRest.Util.Data.Serialization"
 local ServerConfig = require "PuRest.Config.resolveConfig"
+local SessionData = require "PuRest.State.SessionData"
 local Thread = require "PuRest.Util.Threading.Thread"
 local ThreadSlots = require "PuRest.Util.Threading.ThreadSlots"
 local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
@@ -101,7 +100,7 @@ local function Server (enableHttps)
         if err then
             errorMessage = string.format("Terminating server due to error: %s | %s", 
                 tostring(err), 
-                JSON:encode(stackTrace))
+                Serialization.serializeToJson(stackTrace, true))
         end
             
         local reason = err and errorMessage or "Server is shutting down"

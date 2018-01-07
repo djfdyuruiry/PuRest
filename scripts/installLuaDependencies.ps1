@@ -3,10 +3,19 @@ Param([Switch]$installDevDependencies)
 $isRunningOnUnix = $PSVersionTable.Platform -and $PSVersionTable.Platform -eq "Unix"
 $isRunningOnWindows = -not $PSVersionTable.Platform -or $PSVersionTable.Platform -eq "Win*"
 
-$luaDependencies = @("lanes", "luasocket-lanes", "luasec" 
-    "luafilesystem", "luadbi", "md5", 
-    "date", "lzlib", "lrexlib-pcre", 
-    "lualogging", "lualinq", "xml")
+$luaDependencies = @("luasocket-lanes", 
+    "luasec",
+    "luaipc",
+    "luafilesystem"
+    "date",
+    "lrexlib-pcre",
+    "lzlib",
+    "md5",
+    "lualinq",
+    "lualogging",
+    "rxi-json-lua",
+    "xml",
+    "luadbi")
 
 function IsRunningOnOsx
 {

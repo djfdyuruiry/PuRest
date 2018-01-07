@@ -1,6 +1,4 @@
-JSON = require "JSON"
-
-local json = JSON
+local json = require "rxi-json-lua"
 local xml = require "xml"
 
 local Types = require "PuRest.Util.ErrorHandling.Types"
@@ -21,7 +19,7 @@ local function parseJson(jsonString)
 	local jsonObj
 
 	local status, err = pcall(function()
-		jsonObj = json:decode(jsonString)
+		jsonObj = json.decode(jsonString)
 	end)
 
 	if not status then
@@ -41,7 +39,7 @@ local function serializeToJson(value, prettyPrint)
 	local jsonString
 
 	local status, err = pcall(function()
-		jsonString = prettyPrint and json:encode_pretty(value) or json:encode(value)
+		jsonString = prettyPrint and json.encode_pretty(value) or json.encode(value)
 	end)
 
 	if not status then
