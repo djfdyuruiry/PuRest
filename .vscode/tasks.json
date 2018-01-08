@@ -35,7 +35,8 @@
         {
             "label": "buildAndRun_wsl",
             "type": "shell",
-            "command": "./wsl_cmd.bat ./buildAndRun.ps1"
+            "command": "./wsl_cmd.bat ./buildAndRun.ps1",
+            "problemMatcher": []
         }
     ]
 }

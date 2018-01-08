@@ -4,34 +4,36 @@ local setSessionData = require "PuRest.State.setSession"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
+local sessionsSemaphoreName = "purest_sessions"
+
 --- Sessions store semaphore to share sessions across
 -- worker threads on server.
-local sessionsSemaphore = Semaphore(nil,
+local sessionsSemaphore = Semaphore(sessionsSemaphoreName, true, 1, nil,
 	{
 		clientSessions = {},
 		userAgentSessions = {}
 	}
 )
 
---- Get the underlying thread queue for the sessions store.
+--- Get the underlying id for the sessions store semaphore.
 --
--- @return The thread queue for the session semaphore.
+-- @return The session semaphore id.
 --
-local function getThreadQueue ()
-	return sessionsSemaphore.getThreadQueue()
+local function getSemaphoreId ()
+	return sessionsSemaphore.getId()
 end
 
---- Set the thread queue to be used by the sessions store.
+--- Set the id of the semaphore to be used by the sessions store.
 --
--- @param threadQueue Thread queue to use in the sessions semaphore.
+-- @param semaphoreId Id of the sessions semaphore.
 --
-local function setThreadQueue (threadQueue)
+local function setSemaphoreId (semaphoreId)
 	validateParameters(
 		{
-			threadQueue = {threadQueue, Types._userdata_}
-		}, "SessionData.setThreadQueue")
+			semaphoreId = {semaphoreId, Types._string_}
+		})
 
-	sessionsSemaphore = Semaphore(threadQueue)
+	sessionsSemaphore = Semaphore(sessionsSemaphoreName, false, 1, semaphoreId)
 end
 
 --- Create a formatted session id for user agent based session.
@@ -126,8 +128,8 @@ end
 
 return
 {
-	getThreadQueue = getThreadQueue,
-	setThreadQueue = setThreadQueue,
+	getSemaphoreId = getSemaphoreId,
+	setSemaphoreId = setSemaphoreId,
 	resolveSessionData = resolveSessionData,
 	preserveSessionData = preserveSessionData
 }

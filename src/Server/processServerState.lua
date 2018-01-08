@@ -33,7 +33,7 @@ local function buildHttpsDataPipe(socket, threadQueue)
 	return clientDataPipe
 end
 
-local function processServerState (threadId, threadQueue, sessionThreadQueue, socket, useHttps, outputVariables)
+local function processServerState (threadId, threadQueue, sessionThreadSemaphoreId, socket, useHttps, outputVariables)
 	local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 	local ServerConfig = require "PuRest.Config.resolveConfig"
 	
@@ -44,8 +44,8 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 	local SessionData = require "PuRest.State.SessionData"
 	local Site = require "PuRest.Server.Site"
 	local sleep = require "PuRest.Util.Threading.sleep"
-	local Time = require "PuRest.Util.Time.Time"
-	local Timer = require "PuRest.Util.Time.Timer"
+	local Time = require "PuRest.Util.Chrono.Time"
+	local Timer = require "PuRest.Util.Chrono.Timer"
 	local try = require "PuRest.Util.ErrorHandling.try"
 
 	local keepConnectionAlive = false
@@ -54,7 +54,7 @@ local function processServerState (threadId, threadQueue, sessionThreadQueue, so
 	local clientDataPipe
 
 	CurrentThreadId.setCurrentThreadId(threadId)
-	SessionData.setThreadQueue(sessionThreadQueue)
+	SessionData.setSemaphoreId(sessionThreadSemaphoreId)
 
 	-- Init HTTPS security if required.
 	if useHttps then

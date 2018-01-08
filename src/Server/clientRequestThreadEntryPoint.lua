@@ -4,11 +4,11 @@
 --
 -- @param threadId Id of the thread that function is running on.
 -- @param threadQueue optional Thread queue that has one client socket pushed onto it.
--- @param sessionThreadQueue Thread queue to use to get session data.
+-- @param sessionSemaphoreId Session semaphore id to use to get session data.
 -- @param socket optional Client socket to use when processing request.
 -- @param useHttps Use HTTPS when communicating with clients.
 --
-local function clientRequestThreadEntryPoint (threadId, threadQueue, sessionThreadQueue, socket, useHttps)
+local function clientRequestThreadEntryPoint (threadId, threadQueue, sessionSemaphoreId, socket, useHttps)
 	-- in new thread, need to get dependencies when executed instead of when included
 	local log = require "PuRest.Logging.FileLogger"
 	local LogLevelMap = require "PuRest.Logging.LogLevelMap"
@@ -20,7 +20,7 @@ local function clientRequestThreadEntryPoint (threadId, threadQueue, sessionThre
 	validateParameters(
 		{
 			threadId = {threadId, Types._number_},
-			sessionThreadQueue = {sessionThreadQueue, Types._userdata_},
+			sessionSemaphoreId = {sessionSemaphoreId, Types._string_},
 			useHttps = {useHttps, Types._boolean_}
 		}, "clientRequestThreadEntryPoint")
 
@@ -42,7 +42,7 @@ local function clientRequestThreadEntryPoint (threadId, threadQueue, sessionThre
 	try(function() 
 		local processServerState = require "PuRest.Server.processServerState"
 		
-		processServerState(threadId, threadQueue, sessionThreadQueue, socket, useHttps, outputVariables)
+		processServerState(threadId, threadQueue, sessionSemaphoreId, socket, useHttps, outputVariables)
 	end).
 	catch(function(err)
 		-- Detect any errors that occurred outside the main HTTP request loop.

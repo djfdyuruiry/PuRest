@@ -1,7 +1,7 @@
 local lanes = require "lanes"
 
 local sleep = require "PuRest.Util.Threading.sleep"
-local Time = require "PuRest.Util.Time.Time"
+local Time = require "PuRest.Util.Chrono.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
@@ -86,6 +86,10 @@ local function Thread (entryPoint, humanReadableId, errorMessageTemplate)
 
     local function start (...)
         assert((not thread), string.format("Thread with id '%s' has already been started", threadId))
+
+        -- TODO: remove - hack for lanes module passing to child threads
+        local ipcShm = require  "ipc.shm"
+        local ipcFilelock = require "ipc.filelock"
 
         local threadGenerator = lanes.gen("*", {cancelstep = true}, entryPoint)
 

@@ -40,8 +40,9 @@ local function Server (enableHttps)
 	--- Mutlithreading objects.
     local threads = ServerConfig.workerThreads > 1 and {} or nil
     
-    local threadQueue = ServerConfig.workerThreads > 1 and Semaphore() or nil
-	local sessionThreadQueue = SessionData.getThreadQueue()
+    local threadQueue = ServerConfig.workerThreads > 1 and 
+        Semaphore(string.format("%s_threadQueue", serverType), true, ServerConfig.workerThreads) or 
+        nil
 
     local function cleanThreadIfDead (thread, threadIndex, threadSlots)
         local threadIsAlive = thread.isAlive()
@@ -132,7 +133,7 @@ local function Server (enableHttps)
 
         if ServerConfig.workerThreads < 1 then
             -- multiple worker threads disabled in configuration, process request in server thread
-            processServerState(1, nil, sessionThreadQueue, clientSocket, useHttps)
+            processServerState(1, nil, SessionData.getSemaphoreId(), clientSocket, useHttps)
             return
         end
 
@@ -147,7 +148,7 @@ local function Server (enableHttps)
         -- multiple worker threads enabled in configuration, process request in the background
         local thread = Thread(clientRequestThreadEntryPoint, tostring(threadId))
 
-        thread.start(threadId, threadQueue.getThreadQueue(), sessionThreadQueue, clientSocket, useHttps)
+        thread.start(threadId, threadQueue, SessionData.getSemaphoreId(), clientSocket, useHttps)
 
         table.insert(threads, thread)
         
@@ -210,22 +211,14 @@ local function Server (enableHttps)
 
     --- Create object, handlers for interrupt and terminate handlers are
     -- attached here to enable cleanup of server socket before process end.
-    local function construct ()
-        if ServerConfig.workerThreads > 1 then
-            threadQueue.setLimit(ServerConfig.workerThreads)
-        end
-
-        return
-        {
-            host = host,
-            port = port,
-            startServer = startServer,
-            stopServer = stopServer,
-            isRunning = isRunning
-        }
-    end
-
-    return construct()
+    return
+    {
+        host = host,
+        port = port,
+        startServer = startServer,
+        stopServer = stopServer,
+        isRunning = isRunning
+    }
 end
 
 return setmetatable({

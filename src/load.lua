@@ -16,14 +16,14 @@ local function startServerWithHttps (serverErrors)
     local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 
     -- Prepare data sharing semaphores.
-    local sessionQueue = SessionData.getThreadQueue()
+    local sessionSemaphoreId = SessionData.getSemaphoreId()
     local threadSlotQueue = ThreadSlotSemaphore.getThreadQueue()
 
     -- Start HTTPS server.
     local serverThreads = 
     {
-        startServer(threadSlotQueue, sessionQueue, false), 
-        startServer(threadSlotQueue, sessionQueue, true)
+        startServer(threadSlotQueue, sessionSemaphoreId, false), 
+        startServer(threadSlotQueue, sessionSemaphoreId, true)
     }
 
     local cancelThreads = function()

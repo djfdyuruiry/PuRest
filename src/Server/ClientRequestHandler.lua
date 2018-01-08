@@ -14,7 +14,7 @@ local RouteMap = require "PuRest.Routing.RouteMap"
 local SecurityProvider = require "PuRest.Security.SecurityProvider"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local StringUtils = require "PuRest.Util.Data.StringUtils"
-local Timer = require "PuRest.Util.Time.Timer"
+local Timer = require "PuRest.Util.Chrono.Timer"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

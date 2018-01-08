@@ -4,7 +4,7 @@ local Process = require "PuRest.Util.System.Process"
 local Serialization = require "PuRest.Util.Data.Serialization"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local try = require "PuRest.Util.ErrorHandling.try"
-local Timer = require "PuRest.Util.Time.Timer"
+local Timer = require "PuRest.Util.Chrono.Timer"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

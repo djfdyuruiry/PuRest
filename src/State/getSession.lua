@@ -1,9 +1,9 @@
 local getSessionId = require "PuRest.State.getSessionId"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
-local Timer = require "PuRest.Util.Time.Timer"
+local Timer = require "PuRest.Util.Chrono.Timer"
 local try = require "PuRest.Util.ErrorHandling.try"
-local Time = require "PuRest.Util.Time.Time"
+local Time = require "PuRest.Util.Chrono.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

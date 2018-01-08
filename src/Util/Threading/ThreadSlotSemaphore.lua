@@ -1,4 +1,4 @@
-local Semaphore = require "PuRest.Util.Threading.Semaphore"
+local Semaphore = require "PuRest.Util.Threading.Lanes.Semaphore"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local ThreadSlots = require "PuRest.Util.Threading.ThreadSlots"
 local Types = require "PuRest.Util.ErrorHandling.Types"

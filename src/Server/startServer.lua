@@ -10,21 +10,21 @@ local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters
 -- @param useHttps optional Use HTTPS when communicating with clients.
 -- @param The reason the server shutdown or nil.
 --
-local function startServerThread (threadCountQueue, sessionsQueue, useHttps)
+local function startServerThread (threadCountQueue, sessionsSemaphoreId, useHttps)
     local Types = require "PuRest.Util.ErrorHandling.Types"
     local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
     validateParameters(
         {
             threadCountQueue = {threadCountQueue, Types._userdata_},
-            sessionsQueue = {sessionsQueue, Types._userdata_}
+            sessionsSemaphoreId = {sessionsSemaphoreId, Types._string_}
         }, "startServer.startServerThread")
 
     local Server = require "PuRest.Server.Server"
     local SessionData = require "PuRest.State.SessionData"
     local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 
-    SessionData.setThreadQueue(sessionsQueue)
+    SessionData.setSemaphoreId(sessionsSemaphoreId)
     ThreadSlotSemaphore.setThreadQueue(threadCountQueue)
 
     local server = Server(useHttps)
@@ -43,11 +43,11 @@ end
 -- @param useHttps optional Use HTTPS when communicating with clients.
 -- @return Handle for the thread the new server is running on.
 --
-local function startServer (threadSlotQueue, sessionQueue, useHttps)
+local function startServer (threadSlotQueue, sessionsSemaphoreId, useHttps)
     validateParameters(
         {
             threadSlotQueue = {threadSlotQueue, Types._userdata_},
-            sessionQueue = {sessionQueue, Types._userdata_}
+            sessionsSemaphoreId = {sessionsSemaphoreId, Types._string_}
         }, "startServer")
 
     local thread
@@ -57,7 +57,7 @@ local function startServer (threadSlotQueue, sessionQueue, useHttps)
         
         thread = Thread(startServerThread, threadId)
 
-        thread.start(threadSlotQueue, sessionQueue, useHttps)
+        thread.start(threadSlotQueue, sessionsSemaphoreId, useHttps)
     end)
     .catch( function(ex)
         thread = nil

@@ -13,7 +13,7 @@ local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 local LogFiles = require "PuRest.Logging.LogFiles"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local ServerConfig = require "PuRest.Config.resolveConfig"
-local Time = require "PuRest.Util.Time.Time"
+local Time = require "PuRest.Util.Chrono.Time"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

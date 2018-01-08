@@ -3,7 +3,7 @@ local luaFileSystem = require "lfs"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local ServerConfig = require "PuRest.Config.resolveConfig"
-local Timer = require "PuRest.Util.Time.Timer"
+local Timer = require "PuRest.Util.Chrono.Timer"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 

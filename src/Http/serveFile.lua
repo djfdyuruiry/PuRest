@@ -8,7 +8,7 @@ local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local MimeTypeDictionary = require "PuRest.Util.File.MimeTypeDictionary"
 local processView = require "PuRest.View.processView"
 local renderPhp = require "PuRest.Php.renderPhp"
-local Timer = require "PuRest.Util.Time.Timer"
+local Timer = require "PuRest.Util.Chrono.Timer"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
