@@ -39,7 +39,7 @@ local function serializeToJson(value, prettyPrint)
 	local jsonString
 
 	local status, err = pcall(function()
-		jsonString = prettyPrint and json.encode_pretty(value) or json.encode(value)
+		jsonString = prettyPrint and json.encode(value) or json.encode(value)
 	end)
 
 	if not status then

@@ -1,8 +1,8 @@
-local luaSocket = require "socket-lanes"
 -- TODO: investigate why requiring socket anywhere (when using socket-lanes) causes to default to socket instead of socket-lanes
 
 local NamedMutex = require "PuRest.Util.Threading.Ipc.NamedMutex"
 local SharedStringValue = require "PuRest.Util.Threading.Ipc.SharedStringValue"
+local sleep = require "PuRest.Util.Threading.sleep"
 local Time = require "PuRest.Util.Chrono.Time"
 
 local decrementErrorMessageTemplate = "attempted to decrement semaphore counter with id %s below 0"
@@ -49,7 +49,7 @@ local function Semaphore (name, parameters)
                 return callerBlockedByLimit and counter or counter + 1
             end)
 
-            luaSocket.sleep(0.01)
+            sleep(0.01)
         end
 
         return counterValue
@@ -90,7 +90,7 @@ local function Semaphore (name, parameters)
     end
 
     local function construct()
-        id = tostring(params.semaphoreId or luaSocket.gettime())
+        id = tostring(params.semaphoreId or Time.getTimeNowInMs())
         limit = params.semaphoreLimit or -1
 
         mutex = NamedMutex(name, (params.isOwner and params.isOwner or false))

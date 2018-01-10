@@ -55,12 +55,12 @@ end
 local function logToFile (threadId, msg, level)
 	validateParameters(
 		{
-			threadId = {threadId, Types._number_},
+			threadId = {threadId, Types._string_},
 			msg = {msg, Types._string_},
 			level = {level, Types._string_}
 		})
 
-	local logToUse = threadId < 1 and LogFiles.server or string.format(LogFiles.worker, threadId)
+	local logToUse = threadId == "" and LogFiles.server or string.format(LogFiles.worker, threadId)
 	local logPath = (string.format("%s/%s", ServerConfig.logging.logPath, logToUse):gsub("//", "/"))
 
     if Time.getTimeNowInSecs() > nextLogCheck then
@@ -91,9 +91,8 @@ local function log (msg, level, threadId)
 	end
 
 	threadId = threadId and threadId or CurrentThreadId.getCurrentThreadId()
-	threadId = tonumber(threadId or 0)
 
-	msg = threadId > 0 and string.format("[Thread %d] %s", threadId, msg) or msg
+	msg = threadId ~= "" and string.format("[Thread %s] %s", threadId, msg) or msg
 
 	if not level or type(level) ~= Types._number_ then
 		level = LogLevelMap.INFO

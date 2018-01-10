@@ -1,16 +1,14 @@
 local convertClientSocketFileDescriptorToHttpDataPipe = require "PuRest.Util.Networking.convertClientSocketFileDescriptorToHttpDataPipe"
-local clientRequestThreadEntryPoint = require "PuRest.Server.clientRequestThreadEntryPoint"
 local HttpDataPipe = require "PuRest.Http.HttpDataPipe"
 local log = require "PuRest.Logging.FileLogger"
 local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local registerSignalHandler = require "PuRest.Util.System.registerSignalHandler"
-local Semaphore = require "PuRest.Util.Threading.Semaphore"
+local Semaphore = require "PuRest.Util.Threading.Ipc.Semaphore"
 local Serialization = require "PuRest.Util.Data.Serialization"
 local ServerConfig = require "PuRest.Config.resolveConfig"
 local SessionData = require "PuRest.State.SessionData"
+local startWorkerProcess = require "PuRest.Server.startWorkerProcess"
 local Thread = require "PuRest.Util.Threading.Thread"
-local ThreadSlots = require "PuRest.Util.Threading.ThreadSlots"
-local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 local try = require "PuRest.Util.ErrorHandling.try"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -35,63 +33,18 @@ local function Server (enableHttps)
 	local reasonForShutdown
 
 	--- Server management objects.
-	local serverDataPipe, clientSocket
+    local serverDataPipe
+    local clientSocketFd
 
-	--- Mutlithreading objects.
-    local threads = ServerConfig.workerThreads > 1 and {} or nil
+    local nextWorkerId = 0
+    local workerProcessSemaphore
     
-    local threadQueue = ServerConfig.workerThreads > 1 and 
-        Semaphore(string.format("%s_threadQueue", serverType), true, ServerConfig.workerThreads) or 
-        nil
-
-    local function cleanThreadIfDead (thread, threadIndex, threadSlots)
-        local threadIsAlive = thread.isAlive()
-        local threadId = thread.getThreadId()
-        
-        log(string.format("Thread %s is alive? %s", threadId, threadIsAlive), LogLevelMap.DEBUG)
-
-        local secondsRunning = thread.getSecondsSinceStart()
-        local threadHasBeenRunningForTooLong = secondsRunning > THREAD_TIMEOUT_IN_SECS
-
-        if threadIsAlive and not threadHasBeenRunningForTooLong then
-            return
-        end
-    
-        local threadError = thread.getThreadError()
-
-        if threadError then
-            log(string.format("Thread %d terminated due to error: %s", threadId, threadError), 
-                LogLevelMap.ERROR)
-        elseif threadIsAlive and threadHasBeenRunningForTooLong then
-            log(string.format("Thread %d has been running for too long (%ds), killing thread", 
-                threadId, secondsRunning), LogLevelMap.DEBUG)
-        else
-            log(string.format("Thread %d has finished", threadId),
-                LogLevelMap.DEBUG)
-        end
-        
-        log(string.format("Cleaning dead thread %d", threadId), LogLevelMap.DEBUG)
-
-        thread.safeStop()
-
-        table.remove(threads, threadIndex)
-
-        ThreadSlots.markSlotsAsFree(threadSlots, tonumber(threadId))
-    end
-
-    --- Clean any dead threads and donate the id's of dead threads
-    -- back to the pool
-    --
-	local function cleanDeadThreads ()
-        local threadSlots = ThreadSlotSemaphore.getThreadSlots()
-
-		for idx, thread in ipairs(threads) do
-			if thread then
-                cleanThreadIfDead(thread, idx, threadSlots)
-			end
-        end
-        
-        ThreadSlotSemaphore.setThreadSlots()
+    if ServerConfig.workerThreads > 1 then
+        workerProcessSemaphore = Semaphore(string.format("%s_workerProcess", serverType), 
+            {
+                isOwner = true, 
+                limit = ServerConfig.workerThreads
+            })
     end
 
     --- Shutdown the server
@@ -122,38 +75,37 @@ local function Server (enableHttps)
 
     local function waitForClientAndProcessRequest ()
         local err
-        clientSocket, err = serverDataPipe:waitForClient()
+        clientSocketFd, err = serverDataPipe:waitForClient()
 
-        if not clientSocket or err then
+        if not clientSocketFd or err then
             error(err)
         end
         
         log(string.format("%s server on %s Accepted connection with client on fd '%s'.",
-            serverType, serverLocation, tostring(clientSocket)), LogLevelMap.INFO)
+            serverType, serverLocation, tostring(clientSocketFd)), LogLevelMap.INFO)
 
         if ServerConfig.workerThreads < 1 then
             -- multiple worker threads disabled in configuration, process request in server thread
-            processServerState(1, nil, SessionData.getSemaphoreId(), clientSocket, useHttps)
+            processServerState(1, nil, SessionData.getSemaphoreId(), clientSocketFd, useHttps)
             return
         end
 
-        -- prepare for new worker thread
-        cleanDeadThreads()
+        workerProcessSemaphore.increment()
 
-        local threadSlots = ThreadSlotSemaphore.getThreadSlots()
-        local threadId = ThreadSlots.reserveFirstFreeSlot(threadSlots)
+        -- multiple workers enabled in configuration, process request in the background
+        local nextWorkerId = nextWorkerId + 1
 
-        ThreadSlotSemaphore.setThreadSlots()
-
-        -- multiple worker threads enabled in configuration, process request in the background
-        local thread = Thread(clientRequestThreadEntryPoint, tostring(threadId))
-
-        thread.start(threadId, threadQueue, SessionData.getSemaphoreId(), clientSocket, useHttps)
-
-        table.insert(threads, thread)
+        startWorkerProcess(
+            {
+                threadId = string.format("%s_%d", serverType, nextWorkerId), 
+                workerProcessSemaphoreId = workerProcessSemaphore.getId(), 
+                sessionThreadSemaphoreId = SessionData.getSemaphoreId(), 
+                clientSocketFd = clientSocketFd, 
+                useHttps = useHttps
+            })
         
         -- clear clientSocket, not needed for error handling
-        clientSocket = nil
+        clientSocketFd = nil
     end
 
 	--- Start listening for clients and accepting requests; this method blocks.
@@ -176,14 +128,14 @@ local function Server (enableHttps)
                 log(string.format("Error occurred when connecting to client / processing client request: %s.", ex),
                     LogLevelMap.ERROR)
 
-                if clientSocket then
+                if clientSocketFd then
                     pcall(function ()
-                        local dataPipe = convertClientSocketFileDescriptorToHttpDataPipe(clientSocket)
+                        local dataPipe = convertClientSocketFileDescriptorToHttpDataPipe(clientSocketFd)
                         dataPipe.terminate()
                     end)
                     
                     -- clear clientSocket, reset for next listenForClients call
-                    clientSocket = nil
+                    clientSocketFd = nil
                 end
             end)
 		end

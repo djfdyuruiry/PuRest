@@ -132,8 +132,23 @@ local function SharedValueStore (name, parameters)
         id = tostring(params.semaphoreId or Time.getTimeNowInMs())
         semaphore = Semaphore(name, params)
 
-        keysSharedValue = SharedStringValue(string.format("%s_keys", id), params.isOwner and "{}" or nil)
-        valuesSharedValue = SharedStringValue(string.format("%s_values", id), params.isOwner and "{}" or nil)
+        local initalKeys = params.isOwner and "{}" or nil
+        local initalValues = params.isOwner and "{}" or nil
+        local initalData = params.isOwner and params.initalData or nil
+
+        if initalData then
+            local keys = {}
+
+            for k, _ in pairs(initalData) do
+                keys[k] = true
+            end
+
+            initalKeys = Serialization.serializeToJson(keys)
+            initalValues = Serialization.serializeToJson(initalData)
+        end
+
+        keysSharedValue = SharedStringValue(string.format("%s_keys", id), initalKeys)
+        valuesSharedValue = SharedStringValue(string.format("%s_values", id), initalValues)
 
         return
         {

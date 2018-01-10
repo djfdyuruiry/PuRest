@@ -1,11 +1,11 @@
-local function buildHttpsDataPipe(socket, threadQueue)
+local function buildHttpsDataPipe(clientSocketFd)
 	local log = require "PuRest.Logging.FileLogger"
 	local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 	local try = require "PuRest.Util.ErrorHandling.try"
 
 	log("Server client sockets required by configuration to use HTTPS encryption.", LogLevelMap.INFO)			
 
-	if socket then
+	if clientSocketFd then
 		log(string.format("Attempting to encrypt socket for HTTPS communication for socket, file descriptor: %d", socket), 
 			LogLevelMap.DEBUG)
 	end
@@ -13,16 +13,9 @@ local function buildHttpsDataPipe(socket, threadQueue)
 	local clientDataPipe
 
 	try(function() 
-		local getSocketFileDescriptorFromThreadQueue = "PuRest.Server.getSocketFileDescriptorFromThreadQueue"
 		local initHttps = require "PuRest.Security.LuaSecInterop.initHttps"
-		local clientSocket = socket
 
-		if not clientSocket then
-			-- No socket passed in, fetch file descriptor from thread queue
-			clientSocket = getSocketFileDescriptorFromThreadQueue(threadQueue)
-		end
-
-		clientDataPipe = initHttps(clientSocket)
+		clientDataPipe = initHttps(clientSocketFd)
 		
 		log("Successfully encrypted client socket for use as HTTPS data pipe.", LogLevelMap.DEBUG)
 	end).
@@ -33,14 +26,13 @@ local function buildHttpsDataPipe(socket, threadQueue)
 	return clientDataPipe
 end
 
-local function processServerState (threadId, threadQueue, sessionThreadSemaphoreId, socket, useHttps, outputVariables)
+local function processServerState (threadId, workerProcessSemaphoreId, sessionThreadSemaphoreId, clientSocketFd, useHttps, outputVariables)
 	local CurrentThreadId = require "PuRest.Util.Threading.CurrentThreadId"
 	local ServerConfig = require "PuRest.Config.resolveConfig"
 	
 	local log = require "PuRest.Logging.FileLogger"
 	local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 	local processClientRequest = require "PuRest.Server.processClientRequest"
-	local Semaphore = require "PuRest.Util.Threading.Semaphore"
 	local SessionData = require "PuRest.State.SessionData"
 	local Site = require "PuRest.Server.Site"
 	local sleep = require "PuRest.Util.Threading.sleep"
@@ -48,8 +40,9 @@ local function processServerState (threadId, threadQueue, sessionThreadSemaphore
 	local Timer = require "PuRest.Util.Chrono.Timer"
 	local try = require "PuRest.Util.ErrorHandling.try"
 
+    local serverType = useHttps and "HTTPS" or "HTTP"
 	local keepConnectionAlive = false
-	local defaultSite = Site("http", "/", nil, ServerConfig.htmlDirectory, true)
+	local defaultSite = Site(serverType:lower(), "/", nil, ServerConfig.htmlDirectory, true)
 	local timeout = Time.getTimeNowInSecs() + ServerConfig.httpKeepAliveTimeOutInSecs
 	local clientDataPipe
 
@@ -58,24 +51,24 @@ local function processServerState (threadId, threadQueue, sessionThreadSemaphore
 
 	-- Init HTTPS security if required.
 	if useHttps then
-		clientDataPipe = buildHttpsDataPipe(socket, threadQueue)
+		clientDataPipe = buildHttpsDataPipe(clientSocketFd)
 	end
 
 	-- Main HTTP request loop, repeats when HTTP/1.1 Keep-Alive is requested by client.
 	repeat
 		local timer = Timer()
-		local socketToUse = clientDataPipe and clientDataPipe or socket
+		local dataPipeOrSocketToUse = clientDataPipe and clientDataPipe or clientSocketFd
 
 		if clientDataPipe then
-			outputVariables.clientDataPipe = socket
-		elseif socket then
-			outputVariables.socket = socket
+			outputVariables.clientDataPipe = clientDataPipe
+		elseif clientSocketFd then
+			outputVariables.clientSocketFd = clientSocketFd
 		end
 
 		try(function()
 			local serverState
 
-			clientDataPipe, serverState = processClientRequest(threadQueue, defaultSite, socketToUse, singleThread)
+			clientDataPipe, serverState = processClientRequest(threadQueue, defaultSite, dataPipeOrSocketToUse, singleThread)
 
 			-- Log successful request handling and check if socket connection should be kept alive.
 			peername = peername or clientDataPipe.getClientPeerName(true)

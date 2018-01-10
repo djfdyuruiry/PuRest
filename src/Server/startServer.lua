@@ -10,23 +10,20 @@ local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters
 -- @param useHttps optional Use HTTPS when communicating with clients.
 -- @param The reason the server shutdown or nil.
 --
-local function startServerThread (threadCountQueue, sessionsSemaphoreId, useHttps)
+local function startServerThread (sessionsSemaphoreId, useHttps)
     local Types = require "PuRest.Util.ErrorHandling.Types"
     local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
     validateParameters(
         {
-            threadCountQueue = {threadCountQueue, Types._userdata_},
             sessionsSemaphoreId = {sessionsSemaphoreId, Types._string_}
-        }, "startServer.startServerThread")
+        })
 
     local Server = require "PuRest.Server.Server"
     local SessionData = require "PuRest.State.SessionData"
-    local ThreadSlotSemaphore = require "PuRest.Util.Threading.ThreadSlotSemaphore"
 
     SessionData.setSemaphoreId(sessionsSemaphoreId)
-    ThreadSlotSemaphore.setThreadQueue(threadCountQueue)
-
+    
     local server = Server(useHttps)
 
     -- TODO: how to abstract set_finalizer function if it's injected into thread env on start??
@@ -43,10 +40,9 @@ end
 -- @param useHttps optional Use HTTPS when communicating with clients.
 -- @return Handle for the thread the new server is running on.
 --
-local function startServer (threadSlotQueue, sessionsSemaphoreId, useHttps)
+local function startServer (sessionsSemaphoreId, useHttps)
     validateParameters(
         {
-            threadSlotQueue = {threadSlotQueue, Types._userdata_},
             sessionsSemaphoreId = {sessionsSemaphoreId, Types._string_}
         }, "startServer")
 
@@ -57,7 +53,7 @@ local function startServer (threadSlotQueue, sessionsSemaphoreId, useHttps)
         
         thread = Thread(startServerThread, threadId)
 
-        thread.start(threadSlotQueue, sessionsSemaphoreId, useHttps)
+        thread.start(sessionsSemaphoreId, useHttps)
     end)
     .catch( function(ex)
         thread = nil

@@ -1,7 +1,7 @@
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local currentThreadId = 0
+local currentThreadId = ""
 
 --- Set the currently executing thread's ID.
 --
@@ -10,8 +10,8 @@ local currentThreadId = 0
 local function setCurrentThreadId (threadId)
 	validateParameters(
 		{
-			threadId = {threadId, Types._number_},
-		}, "ThreadId.setCurrentThreadId")
+			threadId = {threadId, Types._string_},
+		})
 
 	currentThreadId = threadId
 end

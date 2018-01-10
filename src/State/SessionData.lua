@@ -1,31 +1,43 @@
 local getSession = require "PuRest.State.getSession"
-local Semaphore = require "PuRest.Util.Threading.Semaphore"
 local setSessionData = require "PuRest.State.setSession"
+local SharedValueStore = require "PuRest.Util.Threading.Ipc.SharedValueStore"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
 
-local sessionsSemaphoreName = "purest_sessions"
+local sessionsStoreName = "purest_sessions"
+local sessionDataKey = "sessions"
 
---- Sessions store semaphore to share sessions across
--- worker threads on server.
-local sessionsSemaphore = Semaphore(sessionsSemaphoreName, true, 1, nil,
-	{
-		clientSessions = {},
-		userAgentSessions = {}
-	}
-)
+--- Sessions store to share sessions across
+-- workers on server.
+local sessionsSharedStore
 
---- Get the underlying id for the sessions store semaphore.
+--- Get the underlying id for the sessions store store.
 --
--- @return The session semaphore id.
+-- @return The session store id.
 --
 local function getSemaphoreId ()
-	return sessionsSemaphore.getId()
+	if not sessionsSharedStore then
+		sessionsSharedStore = SharedValueStore(sessionsStoreName, 
+			{
+				isOwner = true,
+				semaphoreLimit = 1, 
+				initalData =
+				{
+					sessions = 	
+					{
+						clientSessions = {},
+						userAgentSessions = {}
+					}
+				}
+			})
+	end
+
+	return sessionsSharedStore.getId()
 end
 
---- Set the id of the semaphore to be used by the sessions store.
+--- Set the id to be used by the sessions store.
 --
--- @param semaphoreId Id of the sessions semaphore.
+-- @param semaphoreId Id of the sessions store.
 --
 local function setSemaphoreId (semaphoreId)
 	validateParameters(
@@ -33,7 +45,12 @@ local function setSemaphoreId (semaphoreId)
 			semaphoreId = {semaphoreId, Types._string_}
 		})
 
-	sessionsSemaphore = Semaphore(sessionsSemaphoreName, false, 1, semaphoreId)
+		sessionsSharedStore = SharedValueStore(sessionsStoreName, 
+			{
+				isOwner = false, 
+				semaphoreId = semaphoreId, 
+				semaphoreLimit = 1
+			})
 end
 
 --- Create a formatted session id for user agent based session.
@@ -73,9 +90,9 @@ local function resolveSessionData (userAgent, clientPeerName, clientPort, siteCo
 			clientPeerName = {clientPeerName, Types._string_},
             clientPort = {clientPort, Types._string_},
 			siteConfig = {siteConfig, Types._table_}
-		}, "SessionData.resolveSessionData")
+		})
 
-	local sessions = sessionsSemaphore()
+	local sessions = sessionsSharedStore.getValueAndLock(sessionDataKey)
 	local clientSessionData, sessionId
 
 	local sessionsEnabled = siteConfig.sessions.peerNameSessionsEnabled
@@ -87,7 +104,7 @@ local function resolveSessionData (userAgent, clientPeerName, clientPort, siteCo
 		clientSessionData, sessionId = getSession(sessions, createPeerNameId(clientPeerName, clientPort), siteConfig, false)
 	end
 
-	sessionsSemaphore()
+	sessionsSharedStore.setValueAndUnlock(sessionDataKey, sessions)
     --TODO: Investigate potential issue with session being requested by two threads and result not being merged, but second one to call perserve gets data written.
 
 	return clientSessionData, sessionId
@@ -111,9 +128,9 @@ local function preserveSessionData (sessionData, userAgent, clientPeerName, clie
 			clientPeerName = {clientPeerName, Types._string_},
             clientPort = {clientPort, Types._string_},
 			siteConfig = {siteConfig, Types._table_}
-		}, "SessionData.preserveSessionData")
+		})
 
-	local sessions = sessionsSemaphore()
+	local sessions = sessionsSharedStore.getValueAndLock(sessionDataKey)
 	local sessionsEnabled = siteConfig.sessions.peerNameSessionsEnabled
 	local userSessionsEnabled = siteConfig.sessions.userAgentSessionsEnabled
 
@@ -123,7 +140,7 @@ local function preserveSessionData (sessionData, userAgent, clientPeerName, clie
 		setSessionData(sessions, sessionData, createPeerNameId(clientPeerName, clientPort), siteConfig, false)
 	end
 
-	sessionsSemaphore()
+	sessionsSharedStore.setValueAndUnlock(sessionDataKey, sessions)
 end
 
 return

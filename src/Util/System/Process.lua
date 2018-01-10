@@ -1,3 +1,5 @@
+local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local methodProxy = require "PuRest.Util.ParameterPassing.methodProxy"
 local Types = require "PuRest.Util.ErrorHandling.Types"
 local validateParameters = require "PuRest.Util.ErrorHandling.validateParameters"
@@ -30,6 +32,8 @@ local function Process (path, humanReadableName, args)
 		
 		argsString = table.concat(args, " ")
 	end
+
+	local executeString = string.format("%s %s", path, argsString)
 
     --- Read all data from a pipe stream.
     --
@@ -79,6 +83,20 @@ local function Process (path, humanReadableName, args)
 		return stream
 	end
 
+	local function runFork(standardErrorFilename)
+		local errFileRedirect = standardErrorFilename and string.format(" 2> %s", standardErrorFilename) or ""
+		
+		log(string.format("Starting process using command: %s", executeString), LogLevelMap.DEBUG)
+
+		local proc, createErr = io.popen(string.format("%s%s", executeString, errFileRedirect))
+
+		if not proc then
+			error(string.format("Failed to open process for '%s' -> %s.", humanReadableName, createErr or "unknown error"))
+		end
+
+		return proc
+	end
+
     --- Run the process handle with the arguments specified, this
     -- can be called multiple times. An error is thrown if there is an issue setting
     -- up the process or any output was written to standard err from the process.
@@ -87,11 +105,8 @@ local function Process (path, humanReadableName, args)
     --
 	local function run ()
 		local standardErrorFilename = os.tmpname()
-		local proc, createErr = io.popen(string.format("%s %s 2> %s", path, argsString, standardErrorFilename))
 
-		if not proc then
-			error(string.format("Failed to open process for '%s' -> %s.", humanReadableName, createErr or "unknown error"))
-		end
+		local proc = runFork(standardErrorFilename)
 
 		local err = readAndCloseStream(createStream(proc, "err", standardErrorFilename), "err", standardErrorFilename)
 
@@ -104,6 +119,7 @@ local function Process (path, humanReadableName, args)
 
 	return
 	{
+		runFork = runFork,
 		run = run
 	}
 end
