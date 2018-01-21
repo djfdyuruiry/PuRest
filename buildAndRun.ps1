@@ -48,7 +48,7 @@ function BuildServerAndDeployWebApps
     # copy in web apps repo if present
     if (Test-Path $webAppsPath)
     {
-        Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Verbose
+        Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Verbose -Exclude ".*"
     }
 }
 

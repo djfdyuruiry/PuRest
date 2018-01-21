@@ -1,3 +1,5 @@
+local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local getSession = require "PuRest.State.getSession"
 local setSessionData = require "PuRest.State.setSession"
 local SharedValueStore = require "PuRest.Util.Threading.Ipc.SharedValueStore"
@@ -91,6 +93,8 @@ local function resolveSessionData (userAgent, clientPeerName, clientPort, siteCo
             clientPort = {clientPort, Types._string_},
 			siteConfig = {siteConfig, Types._table_}
 		})
+	
+	log("resolveSessionData", LogLevelMap.INFO)
 
 	local sessions = sessionsSharedStore.getValueAndLock(sessionDataKey)
 	local clientSessionData, sessionId
@@ -129,6 +133,8 @@ local function preserveSessionData (sessionData, userAgent, clientPeerName, clie
             clientPort = {clientPort, Types._string_},
 			siteConfig = {siteConfig, Types._table_}
 		})
+
+	log("preserveSessionData", LogLevelMap.INFO)
 
 	local sessions = sessionsSharedStore.getValueAndLock(sessionDataKey)
 	local sessionsEnabled = siteConfig.sessions.peerNameSessionsEnabled
