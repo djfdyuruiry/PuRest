@@ -39,18 +39,22 @@ local function Semaphore (name, parameters)
     end
 
     local function increment()
-        local callerBlockedByLimit = true
+        local callerBlockedByLimit = limit > 0
         local counterValue
 
-        while callerBlockedByLimit do
+        repeat
             counterValue = doCounterOperation(function(counter)
-                callerBlockedByLimit = limit ~= -1 and counter >= limit
+                if callerBlockedByLimit then
+                    callerBlockedByLimit = counter >= limit
+                end
 
-                return callerBlockedByLimit and counter or counter + 1
-            end)
+                return counter + 1
+            end, not callerBlockedByLimit)
 
-            sleep(0.01)
-        end
+            if callerBlockedByLimit then
+                sleep(0.01)
+            end
+        until not callerBlockedByLimit
 
         return counterValue
     end

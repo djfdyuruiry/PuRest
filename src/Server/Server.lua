@@ -43,7 +43,7 @@ local function Server (enableHttps)
         workerProcessSemaphore = Semaphore(string.format("%s_workerProcess", serverType), 
             {
                 isOwner = true, 
-                limit = ServerConfig.workerThreads
+                semaphoreLimit = ServerConfig.workerThreads
             })
     end
 
@@ -84,16 +84,16 @@ local function Server (enableHttps)
         log(string.format("%s server on %s Accepted connection with client on fd '%s'.",
             serverType, serverLocation, tostring(clientSocketFd)), LogLevelMap.INFO)
 
-        if ServerConfig.workerThreads < 1 then
+        if ServerConfig.workerThreads < 2 then
+            log("sync process request")
             -- multiple worker threads disabled in configuration, process request in server thread
             processServerState(1, nil, SessionData.getSemaphoreId(), clientSocketFd, useHttps)
             return
         end
 
-        workerProcessSemaphore.increment()
-
         -- multiple workers enabled in configuration, process request in the background
         local nextWorkerId = nextWorkerId + 1
+        log(string.format("next worker id: %s", tostring(nextWorkerId)))
 
         startWorkerProcess(
             {
@@ -125,7 +125,7 @@ local function Server (enableHttps)
                 waitForClientAndProcessRequest()
             end)
             .catch (function (ex)
-                log(string.format("Error occurred when connecting to client / processing client request: %s.", ex),
+                log(string.format("Error occurred when connecting to client / processing client request: %s.", tostring(ex)),
                     LogLevelMap.ERROR)
 
                 if clientSocketFd then

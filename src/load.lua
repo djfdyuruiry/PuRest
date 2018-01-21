@@ -31,8 +31,6 @@ local function startServerWithHttps (serverErrors)
     
     registerSignalHandler("SIGINT", cancelThreads)
     registerSignalHandler("SIGTERM", cancelThreads)
-
-    
     
     for _, thread in ipairs(serverThreads) do
         thread.join()

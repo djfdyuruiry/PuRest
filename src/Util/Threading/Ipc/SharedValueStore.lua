@@ -136,19 +136,14 @@ local function SharedValueStore (name, parameters)
         local initalValues = params.isOwner and "{}" or nil
         local initalData = params.isOwner and params.initalData or nil
 
-        if initalData then
-            local keys = {}
-
-            for k, _ in pairs(initalData) do
-                keys[k] = true
-            end
-
-            initalKeys = Serialization.serializeToJson(keys)
-            initalValues = Serialization.serializeToJson(initalData)
-        end
-
         keysSharedValue = SharedStringValue(string.format("%s_keys", id), initalKeys)
         valuesSharedValue = SharedStringValue(string.format("%s_values", id), initalValues)
+
+        if initalData then
+            for k, v in pairs(initalData) do
+                setValue(k, v)
+            end
+        end
 
         return
         {

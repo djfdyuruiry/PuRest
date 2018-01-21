@@ -399,7 +399,7 @@ local function ClientRequestHandler (routeMap, siteConfig, urlNamespace)
 		local authorised = siteConfig.authentication.enableAuthentication and
 				handleAuthentication(httpStateWrapper.state) or true
 
-		if not authorized then
+		if not authorised then
 			serverState.siteErr = {httpErrCode = 401}
 		end
 
