@@ -4,9 +4,10 @@ local set = "set"
 local all = "*all"
 
 local stringPackSeperator = "<"
-local sharedStringValueSize = 128
+local sharedStringValueSize = 2048
 
-local function SharedStringValue(id, initalValue, shmHandleInstance)
+local function SharedStringValue(id, initalValue, parameters)
+    local params = parameters    
     local shmHandle
 
     local function rewindShmHandle()
@@ -58,7 +59,11 @@ local function SharedStringValue(id, initalValue, shmHandleInstance)
     local function construct()
         local createHandleStatus, createHandleError = pcall(function ()
             -- ensure shmHandle is initalised
-            shmHandle, err = ipcShm.create(id, sharedStringValueSize)
+            if params and params.isOwner then
+                shmHandle, err = ipcShm.create(id, sharedStringValueSize)
+            else
+                shmHandle, err = ipcShm.attach(id)
+            end
 
             if not shmHandle or err then
                 error(err or "unknown error")
@@ -72,16 +77,7 @@ local function SharedStringValue(id, initalValue, shmHandleInstance)
         if not createHandleStatus or createHandleError then
             -- TODO: log this as debug
             -- print("Attempt to create handle failed: ", createHandleError)
-        end
-
-        if not sharedCounter then
-            local err
-
-            shmHandle, err = ipcShm.attach(id)
-
-            if err then
-                error(err)
-            end
+            error(createHandleError or "unknown error creating or attaching shared memory handle")
         end
 
         return
