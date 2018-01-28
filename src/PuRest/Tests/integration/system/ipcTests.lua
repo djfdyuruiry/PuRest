@@ -71,7 +71,7 @@ status, err = pcall(function()
 
     local svs = SharedValueStore("svs", {isOwner = true})
 
-    printSvsOp("set", svs.setValue("session0", {id=92839,username="ezra"}))
+    printSvsOp("set", svs.setValue("session0", {id=92839,username="ezra",subprocessShouldDeleteThis=354536}))
 
     local session0, key, valueWasSet = svs.getValueAndLock("session0")
 
@@ -103,6 +103,22 @@ status, err = pcall(function()
     local status, err = pcall(svs_alt.destroy)
     
     print("destroy alt SharedValueStore result: ", status, err)
+
+    print("--SharedValueStore create subprocess test--")
+
+    --os.execute(string.format([[lua -e "SVS_ID= %s; require 'PuRest.Tests.integration.system.ipcSubProcessTest'"]], svs.getId()))
+
+    local file = assert(io.popen(string.format([[lua -e "SVS_ID= %s; require 'PuRest.Tests.integration.system.ipcSubProcessTest'"]], svs.getId()), 'r'))
+    local output = file:read('*all')
+    file:close()
+
+    luaPrint(output)
+
+    printSvsOp("get after subprocess", svs.getValue("session0"))
+    printSvsOp("get after subprocess", json.encode(svs.getValue("session0")))
+
+    printSvsOp("get alt after subprocess", svs_alt.getValue("session0"))
+    printSvsOp("get alt after subprocess", json.encode(svs_alt.getValue("session0")))
 
     print("destroy SharedValueStore result: ", svs.destroy())
 

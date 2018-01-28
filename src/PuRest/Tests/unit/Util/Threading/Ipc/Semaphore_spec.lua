@@ -1,4 +1,4 @@
-describe("PuRest.Util.Threading.Ipc.Semaphore", function()
+describe("PuRest.Tests.Util.Threading.Ipc.Semaphore", function()
     local Semaphore = require "PuRest.Util.Threading.Ipc.Semaphore"
 
     describe("behaviour", function()

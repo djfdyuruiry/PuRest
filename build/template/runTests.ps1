@@ -2,4 +2,4 @@
 
 printWithHeader "Running PuRest Tests..."
 
-busted "$PSScriptRoot/lua/PuRest/Tests" --suppress-pending
+busted "$PSScriptRoot/lua/PuRest/Tests" --suppress-pending --no-auto-insulate

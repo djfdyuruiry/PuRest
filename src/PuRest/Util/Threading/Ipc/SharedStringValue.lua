@@ -1,4 +1,4 @@
-local ipcShm = require  "ipc.shm"
+local ipcShm = require "ipc.shm"
 
 local set = "set"
 local all = "*all"
