@@ -20,7 +20,7 @@ local function getSessionId (sessionIdentifier, siteName)
 
 	local sessionId = string.format("%s|%s", siteName, sessionIdentifier)
 
-	return md5.sum(sessionId), sessionId
+	return md5.sumhexa(sessionId), sessionId
 end
 
 return getSessionId

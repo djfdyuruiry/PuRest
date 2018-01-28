@@ -69,10 +69,10 @@ local function SecurityProvider (realm, authenticationType)
 		local a1 = string.format("%s:%s:%s", authorizationData.userName, realm, authorizationData.password)
 		local a2 = string.format("%s:%s", authorizationData.requestMethod, authorizationData.requestPath)
 
-		local digest = string.format("%s:%s:%s:%s:%s:%s", md5.sum(a1), authorizationData.nonce, authorizationData.nc,
-			authorizationData.cnonce, "auth", md5.sum(a2))
+		local digest = string.format("%s:%s:%s:%s:%s:%s", md5.sumhexa(a1), authorizationData.nonce, authorizationData.nc,
+			authorizationData.cnonce, "auth", md5.sumhexa(a2))
 
-		digest = md5.sum(digest)
+		digest = md5.sumhexa(digest)
 
 		logProxyFunction(string.format("Digest Security info - a1: '%s', a2: '%s', digest: '%s'", a1, a2, digest), LogLevelMap.DEBUG)
 
