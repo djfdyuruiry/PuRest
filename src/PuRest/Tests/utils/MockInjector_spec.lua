@@ -1,4 +1,4 @@
-describe("MockInjector", function()
+describe("PuRest.Tests.utils.MockInjector", function()
     local MockInjector = require "PuRest.Tests.utils.MockInjector"
     local mockWasUsed = false
 
@@ -14,13 +14,15 @@ describe("MockInjector", function()
         MockInjector.clearMocks()
     end)
 
-    describe("when require is called", function()
-        it("should inject mocks", function()
-            local util = require "some.util"
+    describe("when injectMocks is called", function()
+        describe("and then a package is required", function()
+            it("should inject mocks", function()
+                local util = require "some.util"
 
-            util()
+                util()
 
-            assert.True(mockWasUsed)
+                assert.True(mockWasUsed)
+            end)
         end)
     end)
 end)

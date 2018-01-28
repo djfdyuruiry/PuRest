@@ -2,7 +2,11 @@
 
 $ErrorActionPreference = "Continue"
 
+printWithHeader "Starting PuRest Server..."
+
 lua -e "require 'PuRest.load'"
+
+printWithHeader "Dumping PuRest Server Logs..."
 
 # dump logs to console
 Get-ChildItem "$PSScriptRoot/web" -Filter "*.log" | ForEach-Object `
