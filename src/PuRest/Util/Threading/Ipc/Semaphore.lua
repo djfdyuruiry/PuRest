@@ -1,5 +1,7 @@
 -- TODO: investigate why requiring socket anywhere (when using socket-lanes) causes to default to socket instead of socket-lanes
 
+local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local NamedMutex = require "PuRest.Util.Threading.Ipc.NamedMutex"
 local SharedStringValue = require "PuRest.Util.Threading.Ipc.SharedStringValue"
 local sleep = require "PuRest.Util.Threading.sleep"
@@ -17,6 +19,8 @@ local function Semaphore (name, parameters)
     local sharedCounter
 
     local function doCounterOperation(operation, isReadOnlyOperation)
+        log(string.format("attempting counter operation for semaphore with id %s and name %s (readonly: %s)", id, name, tostring(readOnlyOperation)), LogLevelMap.DEBUG)
+        
         mutex.obtainLock()
 
         local rawCounterValue = sharedCounter.getValue()
@@ -38,6 +42,8 @@ local function Semaphore (name, parameters)
 
         mutex.releaseLock()
 
+        log(string.format("completed counter operation for semaphore with id %s and name %s (readonly: %s)", id, name, tostring(readOnlyOperation)), LogLevelMap.DEBUG)
+
         return counterValue
     end
 
@@ -51,6 +57,8 @@ local function Semaphore (name, parameters)
         local callerBlockedByLimit = limit > 0
         local counterValue
 
+        log(string.format("attempting to increment semaphore with id %s and name %s", id, name), LogLevelMap.DEBUG)
+
         repeat
             counterValue = doCounterOperation(function(counter)
                 if callerBlockedByLimit then
@@ -63,15 +71,20 @@ local function Semaphore (name, parameters)
             end)
 
             if callerBlockedByLimit then
+                log(string.format("increment semaphore with id %s and name %s blocked by semaphore limit %d (counterValue: %d)", id, name, limit, counterValue), LogLevelMap.DEBUG)
                 sleep(0.01)
             end
         until not callerBlockedByLimit
+
+        log(string.format("incremented semaphore with id %s and name %s (counterValue: %d)", id, name, counterValue), LogLevelMap.DEBUG)
 
         return counterValue
     end
 
     local function decrement()
         local triedToDecrementBelowZero = false
+
+        log(string.format("attempting to decrement semaphore with id %s and name %s", id, name), LogLevelMap.DEBUG)
 
         local counterValue = doCounterOperation(function(counter)
             triedToDecrementBelowZero = counter < 1
@@ -82,6 +95,8 @@ local function Semaphore (name, parameters)
         if triedToDecrementBelowZero then
             error(string.format(decrementErrorMessageTemplate, id))
         end
+        
+        log(string.format("decremented semaphore with id %s and name %s (counter value: %d)", id, name, counterValue), LogLevelMap.DEBUG)
 
         return counterValue
     end

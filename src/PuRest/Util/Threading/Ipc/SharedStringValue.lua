@@ -1,5 +1,8 @@
 local ipcShm = require "ipc.shm"
 
+local log = require "PuRest.Logging.FileLogger"
+local LogLevelMap = require "PuRest.Logging.LogLevelMap"
+
 local set = "set"
 local all = "*all"
 
@@ -11,6 +14,7 @@ local function SharedStringValue(id, initalValue, parameters)
     local shmHandle
 
     local function rewindShmHandle()
+        log(string.format("rewinding SharedStringValue shmHandle handle with id %s", id), LogLevelMap.DEBUG)
         shmHandle:seek(set, 0)
     end
 
@@ -35,19 +39,27 @@ local function SharedStringValue(id, initalValue, parameters)
     end
 
     local function getValue()
+        log(string.format("attempting to read value from SharedStringValue with id %s", id), LogLevelMap.DEBUG)
+
         rewindShmHandle()
 
         local rawValue = shmHandle:read(all)
         local value = unpackValueFromString(rawValue)
         
+        log(string.format("read value from SharedStringValue with id %s: rawValue - %s | value - %s", id, rawValue, value), LogLevelMap.DEBUG)
+
         return value
     end
 
     local function setValue(value)
+        log(string.format("attempting to set value of SharedStringValue with id %s: value - %s", id, value), LogLevelMap.DEBUG)
+
         local newRawValue = packValueIntoString(value)
 
         rewindShmHandle()
         shmHandle:write(newRawValue)
+
+        log(string.format("set value of SharedStringValue with id %s: value - %s | newRawValue: %s", id, value, newRawValue), LogLevelMap.DEBUG)
 
         return newRawValue
     end
@@ -60,8 +72,10 @@ local function SharedStringValue(id, initalValue, parameters)
         local createHandleStatus, createHandleError = pcall(function ()
             -- ensure shmHandle is initalised
             if params and params.isOwner then
+                log(string.format("Creating handle for SharedStringValue with id %s", id), LogLevelMap.DEBUG)
                 shmHandle, err = ipcShm.create(id, sharedStringValueSize)
             else
+                log(string.format("Attaching handle for SharedStringValue with id %s", id), LogLevelMap.DEBUG)
                 shmHandle, err = ipcShm.attach(id)
             end
 
@@ -70,6 +84,7 @@ local function SharedStringValue(id, initalValue, parameters)
             end
 
             if initalValue then
+                log(string.format("Setting inital value for SharedStringValue with id %s", id), LogLevelMap.DEBUG)
                 setValue(initalValue)
             end
         end)
