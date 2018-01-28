@@ -22,10 +22,17 @@ local function Semaphore (name, parameters)
         local rawCounterValue = sharedCounter.getValue()
         local counterValue = tonumber(rawCounterValue)
         
-        if isReadOnlyOperation then
-            operation(counterValue)
-        else
+        if operation then
             counterValue = operation(counterValue)
+        end
+
+        local readOnlyOperation = false
+
+        if isReadOnlyOperation then
+            readOnlyOperation = isReadOnlyOperation()
+        end
+
+        if not readOnlyOperation then
             sharedCounter.setValue(counterValue)
         end
 
@@ -35,7 +42,9 @@ local function Semaphore (name, parameters)
     end
 
     local function doReadOnlyCounterOperation(operation)
-        return doCounterOperation(operation, true)
+        return doCounterOperation(operation, function() 
+            return true 
+        end)
     end
 
     local function increment()
@@ -49,7 +58,9 @@ local function Semaphore (name, parameters)
                 end
 
                 return counter + 1
-            end, not callerBlockedByLimit)
+            end, function()
+                return callerBlockedByLimit
+            end)
 
             if callerBlockedByLimit then
                 sleep(0.01)
@@ -75,16 +86,6 @@ local function Semaphore (name, parameters)
         return counterValue
     end
 
-    local function getCounterValue()
-        local counterValue
-
-        doReadOnlyCounterOperation(function(counter)
-            counterValue = counter
-        end)
-
-        return counterValue
-    end
-
     local function getId()
         return id
     end
@@ -98,7 +99,7 @@ local function Semaphore (name, parameters)
         limit = params.semaphoreLimit or -1
 
         mutex = NamedMutex(name, (params.isOwner and params.isOwner or false))
-        sharedCounter = SharedStringValue(id, 0)
+        sharedCounter = SharedStringValue(id, 0, params)
 
         return
         {
@@ -106,7 +107,7 @@ local function Semaphore (name, parameters)
             releaseLock = mutex.releaseLock,
             increment = increment,
             decrement = decrement,
-            getCounterValue = getCounterValue,
+            getCounterValue = doReadOnlyCounterOperation,
             destroy = mutex.destroy,
             getId = getId,
             getName = getName

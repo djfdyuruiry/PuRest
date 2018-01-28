@@ -7,5 +7,5 @@ $webAppsPath = "$projectRoot/../PuRest-web-apps"
 # copy in web apps repo if present
 if (Test-Path $webAppsPath)
 {
-    Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Verbose -Exclude ".*"
+    Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Exclude ".*" # -Verbose
 }
