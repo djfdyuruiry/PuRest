@@ -2,7 +2,6 @@
 $projectRoot = "$PSScriptRoot/.."
 $templateDir = "$projectRoot/build/template"
 $luaSrcDir = "$projectRoot/src"
-$luaLibDir = "$projectRoot/lib/lua"
 
 $releaseDir = "$projectRoot/build/release"
 $releaseWebDir = "$projectRoot/build/release/web"
@@ -22,9 +21,6 @@ Copy-Item "$luaSrcDir/*" $releaseLuaDir -Recurse -Container -Force -Verbose
 
 # generate luadoc
 & "$projectRoot/scripts/generateDocumentation.ps1"
-
-# copy lua libs
-Copy-Item "$luaLibDir/*" $releaseLuaDir -Recurse -Container -Force -Verbose
 
 # copy favico
 Copy-Item "$projectRoot/resources/favicon.ico" $releaseWebDir -Force -Verbose
