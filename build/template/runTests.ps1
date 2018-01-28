@@ -1,3 +1,3 @@
 . "$PSScriptRoot/initEnvironment.ps1"
 
-busted "$PSScriptRoot/test"
+busted "$PSScriptRoot/lua/PuRest/Tests"
