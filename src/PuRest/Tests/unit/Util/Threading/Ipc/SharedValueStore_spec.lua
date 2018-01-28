@@ -7,6 +7,7 @@ describe("PuRest.Tests.Util.Threading.Ipc.SharedValueStore", function()
             local session0 = {id=92839,username="ezra"}
             local session0key = "session0"
             
+            -- TODO: add tests to cover setting inital data and attempting to do so from a child thread failing (not with error but just no data corruption)
             local svs = SharedValueStore(svsName, {isOwner = true})
 
             local setValue, setKey, setExistingKey = svs.setValue(session0key, session0)
