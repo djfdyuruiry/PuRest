@@ -6,7 +6,7 @@ local LogLevelMap = require "PuRest.Logging.LogLevelMap"
 local set = "set"
 local all = "*all"
 
-local stringPackSeperator = "<"
+local stringPackSeperator = "§§§"
 local sharedStringValueSize = 2048
 
 local function SharedStringValue(id, initalValue, parameters)
@@ -83,7 +83,7 @@ local function SharedStringValue(id, initalValue, parameters)
                 error(err or "unknown error")
             end
 
-            if initalValue then
+            if initalValue and (params and params.isOwner) then
                 log(string.format("Setting inital value for SharedStringValue with id %s", id), LogLevelMap.DEBUG)
                 setValue(initalValue)
             end
