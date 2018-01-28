@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "powershell ./buildAndRun.ps1",
+            "command": "powershell ./build.ps1",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -36,6 +36,17 @@
             "label": "buildAndRun_wsl",
             "type": "shell",
             "command": "./wsl_cmd.bat ./buildAndRun.ps1",
+            "problemMatcher": []
+        },
+        {
+            "label": "buildAndRunTests",
+            "type": "shell",
+            "command": "powershell ./buildAndRunTests.ps1"
+        },
+        {
+            "label": "buildAndRunTests_wsl",
+            "type": "shell",
+            "command": "./wsl_cmd.bat ./buildAndRunTests.ps1",
             "problemMatcher": []
         }
     ]

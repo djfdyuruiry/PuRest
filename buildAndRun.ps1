@@ -1,6 +1,3 @@
-$releaseWebDir = "$PSScriptRoot/build/release/web"
-$webAppsPath = "$PSScriptRoot/../PuRest-web-apps"
-
 function GetProcessesUsingPortsOnWindows
 {
     $processes = @((netstat -o -n -a | findstr ":8888"), `
@@ -41,20 +38,10 @@ function KillProcessesUsingServerPorts
     }
 }
 
-function BuildServerAndDeployWebApps
-{
-    & "$PSScriptRoot/build.ps1"
-
-    # copy in web apps repo if present
-    if (Test-Path $webAppsPath)
-    {
-        Copy-Item "$webAppsPath/*" $releaseWebDir -Recurse -Container -Force -Verbose -Exclude ".*"
-    }
-}
-
 function Main
 {        
-    BuildServerAndDeployWebApps
+    & "$PSScriptRoot/scripts/buildServerAndDeployWebApps.ps1"
+
     KillProcessesUsingServerPorts
 
     & "$PSScriptRoot/build/release/startServer.ps1"
